@@ -1,0 +1,502 @@
+version: 18
+
+# Central provider/model/effort configuration for the four-agent Orca workflow.
+# Per-task user overrides take precedence over these defaults.
+# Exact identifiers must exist in the local Claude/Codex CLIs used by Orca.
+# Defaults are intentionally optimized for lower token usage. Escalate only when needed.
+
+agents:
+  lead:
+    display_name: Lead / Manager
+    role: manager
+    provider: codex
+    model: gpt-5.6-luna
+    effort: medium
+    configurable: true
+    allow_model_override: true
+    allow_effort_override: true
+    responsibilities:
+      - coordinate
+      - task_decomposition
+      - classify_task
+      - choose_workflow_mode
+      - change_impact_routing
+      - release_risk_routing
+      - evidence_level_governance
+      - choose_complexity_profile
+      - approve_ba_research
+      - review_development_report
+      - review_qc_report
+      - own_task_state
+      - resolve_agent_questions
+      - escalate_to_user
+      - report_final_result
+    escalation:
+      effort: high
+      when:
+        - coordination_complexity_high
+        - multiple_specialist_reports_conflict
+        - cross_system_architecture_decision
+        - repeated_worker_failure
+
+  ba:
+    display_name: BA / Research
+    role: research
+    provider: codex
+    model: gpt-5.5
+    effort: high
+    configurable: true
+    allow_model_override: true
+    allow_effort_override: true
+    responsibilities:
+      - requirement_analysis
+      - codebase_analysis
+      - architecture_analysis
+      - requirement_document
+      - acceptance_criteria
+      - risk_analysis
+      - identify_open_questions
+    escalation:
+      effort: xhigh
+      when:
+        - architecture_complexity_high
+        - requirements_conflict
+        - requirements_are_materially_ambiguous
+        - cross_system_change
+        - repeated_analysis_failure
+
+  dev:
+    display_name: Developer
+    role: developer
+    provider: codex
+    model: gpt-5.6-luna
+    effort: medium
+    configurable: true
+    allow_model_override: true
+    allow_effort_override: true
+    responsibilities:
+      - implementation
+      - unit_or_targeted_testing
+      - bug_fixing
+      - codebase_discovery
+      - compatibility_analysis
+      - contract_analysis
+      - change_impact_analysis
+      - failure_mode_analysis
+      - production_observability
+      - security_and_runtime_risk_handling
+      - development_document
+      - follow_approved_requirement
+      - report_blockers_to_lead
+    execution_policy:
+      scope_bounded: true
+      repeat_ba_analysis: false
+      broad_repo_scan_by_default: false
+      focused_validation_first: true
+      repeat_successful_checks: false
+    escalation_chain:
+      - level: complex
+        provider: codex
+        model: gpt-5.6-luna
+        effort: high
+        when:
+          - complex_coding
+          - multi_module_change
+          - nontrivial_refactor
+          - implementation_needs_deeper_reasoning
+      - level: hard
+        preferred:
+          provider: codex
+          model: gpt-5.6-terra
+          effort: high
+        alternative:
+          provider: claude
+          model: claude-sonnet-5
+          effort: high
+        selection_policy: lead_selects_one_and_records_reason
+        when:
+          - difficult_root_cause
+          - architecture_heavy_implementation
+          - concurrency_or_race_condition
+          - distributed_system_change
+          - security_critical_implementation
+      - level: very_hard
+        preferred:
+          provider: codex
+          model: gpt-5.6-sol
+          effort: high
+        alternative:
+          provider: claude
+          model: claude-opus-5
+          effort: high
+        selection_policy: lead_selects_one_and_records_reason
+        when:
+          - repeated_implementation_failure
+          - hard_level_failed
+          - exceptionally_complex_debugging
+          - exceptionally_complex_refactor
+
+  qc:
+    display_name: QC / Reviewer
+    role: quality_control
+    provider: claude
+    model: claude-sonnet-5
+    effort: medium
+    configurable: true
+    allow_model_override: true
+    allow_effort_override: true
+    responsibilities:
+      - verify_requirement_coverage
+      - execute_quality_validation
+      - test_strategy
+      - test_case_design
+      - regression_analysis
+      - risk_based_review
+      - change_impact_verification
+      - requirement_traceability
+      - release_verification
+      - production_risk_review
+      - missing_change_surface_detection
+      - review_changed_behavior
+      - quality_risk_analysis
+      - report_defects_to_lead
+    escalation:
+      effort: high
+      when:
+        - security_sensitive
+        - concurrency_sensitive
+        - critical_release
+        - regression_risk_high
+        - broad_cross_module_change
+        - repeated_qc_ambiguity
+
+
+engineering_policy:
+  workspace_pool:
+    reuse_existing_workspaces_first: true
+    preferred_pool_size: 3
+    primary_is_execution_candidate: false
+    inventory_before_worker_start: true
+    require_user_selection_when_unspecified: true
+    require_checkout_confirmation_when_branch_changes: true
+    create_new_workspace_automatically: false
+    when_pool_empty:
+      report_empty_pool: true
+      require_user_workspace_name: true
+      invent_workspace_name: false
+      create_only_after_user_name: true
+      validate_name_before_create: true
+      require_branch_preparation_decision_when_needed: true
+    inspect:
+      - branch
+      - tracking_branch
+      - current_commit
+      - staged
+      - unstaged
+      - untracked
+    dirty_workspace:
+      auto_stash: false
+      auto_reset: false
+      auto_clean: false
+      auto_checkout: false
+      require_user_decision: true
+    branch_occupancy_check: true
+    fresh_worker_after_workspace_selection: true
+    workspace_identity:
+      user_selected_name_is_canonical: true
+      keep_branch_identity_separate: true
+      preserve_name_across_branch_changes: true
+      worker_display_name_format: "<workspace> · <ROLE>"
+      branch_name_as_display_name_by_default: false
+      unsupported_ui_rename_commands_allowed: false
+  task_classification:
+    types:
+      - feature
+      - bug
+      - refactor
+      - performance
+      - security
+      - infra
+      - migration
+      - investigation
+      - review-only
+      - release-fix
+  evidence_levels:
+    - confirmed
+    - likely
+    - hypothesis
+    - unknown
+  shared_controls:
+    change_impact_analysis: true
+    release_deployment_safety: risk_based
+    production_debugging: evidence_first
+    definition_of_done: risk_based
+    context_budget: progressive_loading
+    silent_material_assumptions: false
+  rework_stop_conditions:
+    same_material_failure_limit: 2
+    missing_requirement_requires_decision: true
+    escalate_with_recorded_reason: true
+
+qc_policy:
+  context_mode: delta_only
+  allowed_context:
+    - git_diff
+    - relevant_ba_requirement_sections
+    - relevant_dev_development_sections
+    - concise_test_results
+  forbidden_context_by_default:
+    - full_repository_scan
+    - full_ba_transcript
+    - full_dev_transcript
+    - full_successful_test_logs
+    - unrelated_files
+  testing:
+    max_attempts_per_dispatch: 1
+    allow_transient_retry_without_lead: false
+    on_failure: report_to_lead_and_stop
+    failure_report_fields:
+      - issue
+      - evidence
+      - affected_files
+      - affected_lines
+      - command
+      - error_excerpt
+      - recommended_next_action
+  authority:
+    may_fix_code: false
+    may_change_requirements: false
+    may_contact_dev_directly: false
+    may_contact_ba_directly: false
+    must_wait_for_lead_after_failure: true
+    revalidation_requires_new_lead_dispatch: true
+
+communication:
+  allow:
+    - user_to_lead
+    - lead_to_user
+    - lead_to_ba
+    - ba_to_lead
+    - lead_to_dev
+    - dev_to_lead
+    - lead_to_qc
+    - qc_to_lead
+  deny:
+    - ba_to_dev
+    - dev_to_ba
+    - ba_to_qc
+    - qc_to_ba
+    - dev_to_qc
+    - qc_to_dev
+  rules:
+    - every_specialist_reports_only_to_lead
+    - all_questions_must_go_through_lead
+    - all_blockers_must_go_through_lead
+    - all_decisions_must_go_through_lead
+    - all_handoffs_must_go_through_lead
+    - only_lead_reports_final_result_to_user
+    - specialists_must_not_delegate_to_each_other
+
+workflow_modes:
+  simple:
+    description: Small implementation task. Dev and QC are required; BA analysis may be skipped only when the user's requirement is already explicit and confirmed.
+    flow:
+      - lead
+      - dev
+      - lead
+      - qc
+      - lead
+      - user
+
+  standard:
+    description: Default for feature work, non-trivial bugs, refactoring, architecture changes, or tasks needing analysis before implementation.
+    default: true
+    flow:
+      - lead
+      - ba
+      - lead
+      - dev
+      - lead
+      - qc
+      - lead
+      - user
+
+
+  review_fix:
+    description: Code review followed by a bug fix or targeted implementation change. Skip BA when the defect and expected behavior are already clear; use Dev then independent QC with delta-only context.
+    flow:
+      - lead
+      - dev
+      - lead
+      - qc
+      - lead
+      - user
+
+  research_only:
+    description: Analysis, investigation, requirement clarification, architecture review, or documentation without code changes.
+    flow:
+      - lead
+      - ba
+      - lead
+      - user
+
+  qc_only:
+    description: Review or verification of existing changes without new implementation.
+    flow:
+      - lead
+      - qc
+      - lead
+      - user
+
+optimization:
+  objective: minimize_token_usage_without_sacrificing_required_quality
+  rules:
+    - use_default_model_and_effort_first
+    - do_not_escalate_preemptively
+    - escalate_only_when_a_listed_condition_is_observed
+    - escalate_only_the_role_that_needs_more_reasoning
+    - do_not_repeat_analysis_already_completed_by_another_role
+    - pass_concise_handoff_summaries_and_required_artifacts_instead_of_full_transcripts_when_possible
+    - keep_simple_tasks_in_simple_mode_when_requirements_are_explicit
+    - return_to_default_profile_for_later_phases_unless_escalation_is_still_needed
+  complexity_profiles:
+    simple:
+      lead: default
+      ba: skipped_when_allowed
+      dev: default
+      qc: default
+    normal:
+      lead: default
+      ba: default
+      dev: default
+      qc: default
+    complex:
+      lead: escalate_only_if_lead_condition_matches
+      ba: escalate_only_if_ba_condition_matches
+      dev: escalate_only_if_dev_condition_matches
+      qc: escalate_only_if_qc_condition_matches
+
+resolution:
+  precedence:
+    - task_override
+    - conditional_escalation
+    - agents-models.yaml_default
+    - provider_default
+  substitution_policy:
+    allow_silent_substitution: false
+    on_unavailable_provider_model_or_effort: stop_and_report_to_user
+
+orchestration:
+  required: true
+  cli_resolution:
+    packaged_windows_preferred: orca
+    do_not_require_aliases:
+      - co
+      - orca-cli
+    runtime_check: orca status --json
+  coordinator_continuity:
+    primary_lead_owns_or_binds_run: true
+    resume_inspects_existing_runs_first: true
+    create_new_run_only_when_no_match_exists: true
+    orchestration_state_is_source_of_truth: true
+    ordinary_chat_resume_is_not_dispatch: true
+    prefer_fresh_supervised_worker_in_existing_worktree: true
+    no_final_while_required_dispatch_unsettled: true
+    no_final_while_required_stage_remains: true
+    automatic_stage_continuation: true
+    no_user_nudge_between_approved_stages: true
+    worker_done_settles_phase_not_workflow: true
+    peek_is_diagnostic_only: true
+    blocking_wait_required_after_dispatch: true
+    timeout_is_checkpoint_not_completion: true
+  no_generic_subagent_fallback: true
+  forbidden_fallbacks:
+    - claude_agent_tool
+    - claude_task_tool
+    - explore_subagent
+    - plan_subagent
+    - general_purpose_subagent
+  verification:
+    - verify_worker_is_registered_in_orca_orchestration
+    - verify_worker_provider_before_work
+    - verify_worker_model_before_work
+    - verify_worker_effort_before_work
+    - require_worker_done_before_advancing_phase
+  worker_failure_handling:
+    agent_prompt_stalled:
+      phase_result: failed_to_start
+      accept_late_output_after_capability_revoked: false
+      require_worker_done: false
+      inspect_exact_dispatch_before_retry: true
+      cleanup_attempts_before_fresh_retry: 1
+      retry_must_use_fresh_worker: true
+    capability_revoked:
+      worker_authority_ended: true
+      accept_late_specialist_result: false
+    retained_identity_unproven:
+      treat_as_cleanup_anomaly: true
+      retry_release_endlessly: false
+      future_work_requires_fresh_worker: true
+  cleanup:
+    release_worker_after_verified_worker_done: true
+    report_unreleased_terminal_handle: true
+
+documentation:
+  enabled: true
+  required_before_final_success: true
+  root: .docs/features
+  folder_pattern: "{YYYY-MM-DD}_{feature-slug}"
+  folder_naming:
+    source: feature_semantics
+    use_branch_name_as_default: false
+    style: lowercase-kebab-case
+    preferred_words: 2-4
+    max_slug_length: 32
+    announce_suggestion_before_create: true
+    require_confirmation_when_unambiguous: false
+    ask_user_when_ambiguous: true
+    keep_name_stable_after_create: true
+  files:
+    - ba/requirement.md
+    - dev/development.md
+  language: English
+  status_gate:
+    implemented_requires_qc_worker_done: true
+    implemented_requires_no_open_critical_review_issues: true
+    implemented_requires_all_p0_pass: true
+
+primary_session_policy:
+  coordinator_only: true
+  fresh_supervised_worker_for_every_specialist_phase: true
+  allow_primary_as_worker: false
+  allow_ordinary_chat_reuse_as_worker_by_default: false
+  allow_direct_fallback_when_worker_start_fails: false
+  keep_primary_branch_unchanged_for_cross_branch_work: true
+  separate_worktree_for_other_branch: true
+  worktree_reuse_allowed: true
+  session_reuse_default: false
+
+cleanup_policy:
+  accepted_worker_done_result_is_immutable_during_cleanup: true
+  outcomes:
+    released:
+      status: RELEASED
+    user_takeover:
+      status: RETAINED_USER_OWNED
+      retry: false
+      future_reuse: false
+    user_owned:
+      status: RETAINED_USER_OWNED
+      retry: false
+      future_reuse: false
+    release_unknown:
+      status: RELEASE_NOT_VERIFIED
+      retry: false
+      inspect_worker_state_once: true
+    tab_not_found:
+      status: RELEASE_NOT_VERIFIED
+      retry: false
+      inspect_worker_state_once: true
+    active_cleanup_failure:
+      status: RELEASE_FAILED_ACTIVE
+      report_blocker: true
