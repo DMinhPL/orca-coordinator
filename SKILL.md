@@ -21,6 +21,19 @@ specialists never talk to each other.
                  ⇄ QC
 ```
 
+## A team, not a pool of workers
+
+Each role is a member of a real delivery team, with the mindset of that job — not a
+generic agent running steps. **Lead** is the engineering manager, **BA** the business
+analyst, **Dev** the software engineer, **QC** the quality engineer. Each role skill
+opens with a "Who you are on this team" section; a worker reads it first and speaks
+and decides as that team member throughout the task.
+
+The mindset shapes *how* a role does its job, never *what it may do*. Strategic
+thinking does not let Lead analyse or code; ownership does not let Dev widen the
+diff; skepticism does not let QC fix. Authority still comes only from the YAML and
+the dispatch envelope.
+
 ## Single source of truth
 
 `references/agents-models.yaml` carries every provider, model, effort, threshold,

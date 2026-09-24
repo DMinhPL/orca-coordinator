@@ -44,6 +44,14 @@ Changes since v25 are documented here pending the next config-versioned release:
   Launch and Bootstrap ACK receipts are unchanged.
 - `~ orca-lead/SKILL.md` step 9 — Lead must read closeout § 6 and use its table
   format before writing the final report; a prose final report is a format defect.
+- `+ SKILL.md` "A team, not a pool of workers" and `+` a "Who you are on this team"
+  section opening each role skill — Lead as engineering manager, BA as business
+  analyst, Dev as software engineer, QC as quality engineer, each with concrete
+  behaviors for that job. The mindset shapes how a role works, never what it may do;
+  authority still comes only from the YAML and the dispatch envelope.
+- `~ handoff-protocol.md` Role Bootstrap ACK — adds an `Acting as` line in which the
+  worker names its team role and what it owns; a generic or cross-role line is an
+  inconsistent ACK.
 - `~ SKILL.md` — rename the package skill to `orca-coordinator` and align its
   formatting with the current documentation style.
 - `+ workflows.md` § 1.3b and `+ handoff-protocol.md` Role Bootstrap ACK — every

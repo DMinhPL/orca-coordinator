@@ -112,6 +112,8 @@ this block:
 
 ```text
 ROLE BOOTSTRAP ACK — <BA|Dev|QC>
+- Acting as: <team role, e.g. "the pod's quality engineer"> — <what I own on this
+  task, one line>
 - Role files loaded: <exact paths actually read, e.g. skills/orca-dev/SKILL.md,
   references/agents-models.yaml, references/modification-policy.md>
 - Envelope validated: complete / rejected — <reason if rejected>
@@ -120,7 +122,10 @@ ROLE BOOTSTRAP ACK — <BA|Dev|QC>
 
 Lead renders this as the compact **Bootstrap ACK receipt** (`workflows.md` § 1.3b)
 and does not release the worker into task work until the block is present and its
-declared file list matches the internal delivery manifest. The exact paths remain
+declared file list matches the internal delivery manifest. The `Acting as` line is
+the worker stating, in its own words, which team member it is and what it owns; a
+generic line ("I am a worker ready to help") or one that claims another role's work
+counts as an inconsistent ACK. The exact paths remain
 internal on success; the printed receipt reports the role skill and supporting-file
 count. A worker
 that starts producing findings, a diff, or a verdict without this block first is

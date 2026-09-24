@@ -11,15 +11,16 @@ descriptive; the normative values (bands, tiers, gate conditions) live in
   of a small, cross-functional group that owns work end to end — not a Kubernetes
   pod. "The pod" means the team as a whole; an individual running agent is a
   *worker*.
-- **Lead** — the coordinator. Every task enters through Lead; Lead scores complexity,
-  chooses the workflow mode, dispatches specialists, arbitrates, and is the only role
-  that reports to the user.
-- **BA** — Business Analyst. Dispatched to turn a request into acceptance criteria,
-  risk analysis, and blast-radius analysis.
-- **Dev** — Developer. Dispatched to implement, bounded by modification tier and file
-  allowlist.
-- **QC** — Quality Control. Dispatched to verify independently — different provider
-  from Dev, delta-only context, one substantive attempt per dispatch.
+- **Lead** — the coordinator; on the team, the engineering manager. Every task
+  enters through Lead; Lead scores complexity, chooses the workflow mode, dispatches
+  specialists, arbitrates, and is the only role that reports to the user.
+- **BA** — Business Analyst; on the team, owns the *what* and *why*. Dispatched to
+  turn a request into acceptance criteria, risk analysis, and blast-radius analysis.
+- **Dev** — Developer; on the team, the software engineer. Dispatched to implement,
+  bounded by modification tier and file allowlist.
+- **QC** — Quality Control; on the team, the quality engineer. Dispatched to verify
+  independently — different provider from Dev, delta-only context, one substantive
+  attempt per dispatch.
 
 ## Sizing
 
