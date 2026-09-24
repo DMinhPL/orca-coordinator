@@ -6,6 +6,11 @@ descriptive; the normative values (bands, tiers, gate conditions) live in
 
 ## Roles
 
+- **Pod** — the four-role team (Lead, BA, Dev, QC) that works one task together
+  through Orca; "the four-agent Orca pod." Borrowed from the engineering-team sense
+  of a small, cross-functional group that owns work end to end — not a Kubernetes
+  pod. "The pod" means the team as a whole; an individual running agent is a
+  *worker*.
 - **Lead** — the coordinator. Every task enters through Lead; Lead scores complexity,
   chooses the workflow mode, dispatches specialists, arbitrates, and is the only role
   that reports to the user.
