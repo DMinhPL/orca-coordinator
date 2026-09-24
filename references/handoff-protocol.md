@@ -207,6 +207,32 @@ everyone than making QC find it.
 cannot justify a tier above M1, close a human gate, or satisfy an acceptance
 criterion — so tagging honestly is what keeps the downstream gates meaningful.
 
+### Sending `worker_done` — copy the lifecycle IDs, never retype them
+
+Orca validates every `worker_done` against the active Dispatch and rejects one whose
+Task ID or Dispatch ID does not match. The work may be finished, but the Dispatch
+stays open until a valid report arrives. The usual cause is a model retyping a long
+hex ID from memory and dropping or changing one character (`task_…6682a8` sent as
+`task_…6682a`). It is a bookkeeping failure, not a task failure — and it is avoided
+by never retyping.
+
+The injected Orca preamble is the only source of your lifecycle identity. Not the
+dispatch envelope, not the conversation, not a previous task.
+
+1. **Copy the `worker_done` command from the preamble verbatim.** Keep its
+   executable, worker handle, dispatch capability, Task ID and Dispatch ID exactly as
+   given. Never retype, shorten, or recall an ID from memory. Change only
+   `--subject`, `--body` and `--outcome`.
+2. **Rejected for an ID mismatch** (the report was never accepted): copy the
+   command from the preamble again and resend **exactly once**. A second rejection
+   goes to Lead as a blocker; do not keep trying variations.
+3. **`consumer_fenced`** from `check` or `send`: this process no longer owns the
+   Dispatch. Stop — do not send or retry `worker_done`.
+4. **Outcome unclear** (the send may have been accepted — timeout, lost response):
+   do not send a new `worker_done`. Report it to Lead, who inspects the Dispatch.
+   A second report under a different identity is exactly what Orca's validation
+   exists to refuse.
+
 ## Rules
 
 1. **No verbal handoffs.** Not in the envelope, not received.
@@ -221,3 +247,6 @@ criterion — so tagging honestly is what keeps the downstream gates meaningful.
    audit trail of who was asked to do what, on what basis.
 6. **No task work before the Role Bootstrap ACK.** A verified worker identity is not
    a ready specialist — see "Role Bootstrap ACK" above.
+7. **Lifecycle IDs are copied, never retyped.** `worker_done` takes its Task ID and
+   Dispatch ID verbatim from the injected preamble — see "Sending `worker_done`"
+   above.

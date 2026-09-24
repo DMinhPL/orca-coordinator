@@ -52,6 +52,14 @@ Changes since v25 are documented here pending the next config-versioned release:
 - `~ handoff-protocol.md` Role Bootstrap ACK — adds an `Acting as` line in which the
   worker names its team role and what it owns; a generic or cross-role line is an
   inconsistent ACK.
+- `+ handoff-protocol.md` § Sending `worker_done` and rule 7 — workers copy the
+  `worker_done` command and its Task/Dispatch IDs verbatim from the injected Orca
+  preamble, never retyping them; an ID-mismatch rejection is resent exactly once,
+  `consumer_fenced` stops without retry, and an unclear outcome goes to Lead
+  instead of a new report.
+- `~ orca-lead/SKILL.md` § 6b — Lead treats an ID-mismatch rejection as a
+  bookkeeping error: ask the worker to resend from its preamble, take any IDs from
+  orchestration state rather than memory, and re-dispatch only if the resend fails.
 - `~ SKILL.md` — rename the package skill to `orca-coordinator` and align its
   formatting with the current documentation style.
 - `+ workflows.md` § 1.3b and `+ handoff-protocol.md` Role Bootstrap ACK — every

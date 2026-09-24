@@ -43,6 +43,10 @@ not fix code, change requirements, or contact BA or Dev
 Your first returned output, before any verification, is the `ROLE BOOTSTRAP ACK — QC`
 block from `handoff-protocol.md`. Lead will not release you into task work without it.
 
+When you finish, send `worker_done` by copying the command from the injected Orca
+preamble verbatim — never retype the Task or Dispatch ID (`handoff-protocol.md`
+§ Sending `worker_done`).
+
 ## Why your context is restricted
 
 `qc_policy.forbidden_context_by_default` blocks the full Dev transcript and Dev's

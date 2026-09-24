@@ -52,6 +52,10 @@ in `research_only` mode it is M0 by definition.
 Your first returned output, before any analysis, is the `ROLE BOOTSTRAP ACK — BA`
 block from `handoff-protocol.md`. Lead will not release you into task work without it.
 
+When you finish, send `worker_done` by copying the command from the injected Orca
+preamble verbatim — never retype the Task or Dispatch ID (`handoff-protocol.md`
+§ Sending `worker_done`).
+
 ## Project overlay (optional)
 
 `project_overlay`. If the envelope lists files for `ba` from

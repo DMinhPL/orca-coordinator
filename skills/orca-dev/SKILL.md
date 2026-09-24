@@ -53,6 +53,10 @@ Your first returned output, before any task work, is the `ROLE BOOTSTRAP ACK —
 block from `handoff-protocol.md`. Lead will not release you into implementation
 without it.
 
+When you finish, send `worker_done` by copying the command from the injected Orca
+preamble verbatim — never retype the Task or Dispatch ID (`handoff-protocol.md`
+§ Sending `worker_done`).
+
 Validate the envelope against
 `orchestration.dispatch_envelope.required_fields`. Return it to Lead without starting
 if:

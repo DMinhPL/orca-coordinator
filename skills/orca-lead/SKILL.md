@@ -273,6 +273,18 @@ done. A `partial` report on a `terminal` dispatch is normal and coherent.
 If a worker crashes or never returns `worker_done`: re-dispatch the same role when
 reasonable, otherwise report the blocker. Do not fill the gap yourself.
 
+**A `worker_done` rejected for an ID mismatch is a bookkeeping error, not a failed
+worker.** The work is usually done; only the report carried a mistyped Task or
+Dispatch ID. Do not re-dispatch, and do not settle the Dispatch yourself. Message the
+worker by its Dispatch ID to resend once, copying the command from its injected
+preamble (`handoff-protocol.md` § Sending `worker_done`). Write the correct IDs in
+your message only by copying them from orchestration state (`worker-show`), never
+from memory. Re-dispatch only if the resend is rejected again or the worker is gone.
+When a send may already have been accepted, inspect the Dispatch with `worker-show`
+before asking for anything — never request a second report under a new identity.
+Record the event in `decisions.jsonl`; repeated occurrences are a retrospective
+signal.
+
 ### 7. Arbitrate — without doing the work
 
 `lead_authority_boundary`. Once a phase is dispatched, the specialist owns it. While
