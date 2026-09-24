@@ -26,6 +26,14 @@ Non-negotiable regardless of which mode is selected.
 - If worker creation fails: stop, recover, report. Never fall back to direct
   specialist execution in Primary, and never to a generic subagent —
   `orchestration.forbidden_fallbacks` names the ones most likely to be reached for.
+- **This includes the moment before dispatch, not only a failed one.** Lead's
+  classification questions to the user must never present a "direct
+  implementation" / "skip the pod" option — not even as one choice among several,
+  not even for an XS task. `complexity_assessment.triage`'s fast path shortens
+  *scoring*; it does not create a dispatch-free path. If the orchestration runtime
+  itself is unreachable (`orchestration.cli_resolution.runtime_check` fails), that
+  is the same class of blocker as a failed worker creation: stop and report it,
+  do not quietly do the work yourself.
 - For work or review on another branch, Primary stays on its branch and the target
   branch runs in a separate worktree. See mode `cross_branch_review`.
 
@@ -66,19 +74,61 @@ doing that role's work.
 
 ### 1.3a Verified launch receipt
 
-Immediately after `worker-start` succeeds and verification passes, Lead records a
+Immediately after `worker-start` succeeds and verification passes, Lead prints a
 compact receipt before entering the wait loop. This is an observability checkpoint,
-not an extra approval step:
+not an extra approval step — one per BA/Dev/QC launch, including retries:
 
 ```text
-<ROLE> worker started
-Run: <run_id>  Task: <task_id>  Dispatch: <dispatch_id>
-Worker: <provider> <model> / <effort>  exactWorker: <true|false>
-Workspace: <logical_workspace>  Branch: <branch>
+🚀 <ROLE> dispatched
+Worker: <provider>/<model> · <effort>
+Workspace: <logical_workspace> · <branch>
+Scope: <modification_tier> · <n files|read-only>
+Dispatch: <dispatch_id>
 ```
 
-Print it only from verified orchestration state. For retries or escalations, issue a
-new receipt with the new Dispatch ID; never reuse an earlier receipt.
+Rules:
+
+- Keep the complete dispatch envelope, Run/Task IDs, verification flags, allowlist,
+  injected-resource manifest, criteria, and escalation rules internal. Do not print
+  them unless the user asks or a failure makes one of them relevant.
+- Print only verified values; never invent an id, branch, or worktree value.
+- For retries or escalations, print a fresh receipt with the new Dispatch ID; never
+  reuse an earlier one.
+- Use exactly this short structure; do not add a table or explanatory paragraph.
+
+### 1.3b Role Bootstrap ACK receipt (role-loaded checkpoint)
+
+The launch receipt above answers "is this the right worker?". It cannot answer "has
+this worker actually read its role skill?" — that is answered here, from the
+worker's own first output.
+
+`handoff-protocol.md` requires every BA/Dev/QC worker's **first returned output** to
+be a `ROLE BOOTSTRAP ACK` block naming the files it read and restating its mission in
+one sentence. As soon as that block arrives — and **before** Lead releases the worker
+into real task work — print this second receipt:
+
+```text
+✅ <ROLE> ready
+Loaded: <role skill + n supporting files>
+Mission: <one-sentence mission>
+```
+
+Rules:
+
+- Validate the worker's exact declared file list against the internal delivery
+  manifest, but print only the compact count shown above. A mismatch is an
+  **inconsistent ACK** and its details are printed only as an error.
+- Missing or inconsistent ACK = the worker did not (verifiably) load its skill =
+  treat the output as invalid and re-dispatch, same as a crashed worker under 1.3.
+  Do not let it proceed to task work on the strength of `exactWorker: true` alone.
+- This receipt proves the role skill was **delivered and acknowledged** — a
+  self-report plus a form check. It does not prove the worker will obey everything in
+  it; that is what the return-envelope arbitration in 1.5 and `qc_policy` are for.
+  Never present this receipt as final proof of compliance.
+- Print it for every BA/Dev/QC launch, including retries.
+
+The two short receipts expose status, not the full contract: launch → ready → the
+return envelope at `worker_done`.
 
 ## 1.4 Mandatory coordinator wait loop
 
@@ -183,8 +233,13 @@ the mandatory inventory step that makes reuse the default instead of an option L
 has to remember.
 
 1. List registered worktrees with a read-only Git command. Exclude Primary from the
-   candidate pool — it stays on its coordinator branch regardless of what this gate
-   decides.
+   candidate pool by default — it stays on its coordinator branch unless the user
+   explicitly opts in for this task. Only raise that option when the pool would
+   otherwise be empty/all-unsafe, or the user has said they want a single-worktree
+   setup right now; state that Primary would become an execution worktree, its
+   current branch and dirty state, and that the answer applies to this task only.
+   Never assume a prior yes carries over to the next task
+   (`primary_excluded_from_pool`).
 2. For every remaining candidate, read `worktree_selection_policy
    .inventory_required_fields` — name, path, branch, tracking branch, commit, staged,
    unstaged, untracked. A worktree whose old Orca session is hidden or closed is still
@@ -213,6 +268,20 @@ has to remember.
    the project root, not nested inside it — a project at `/c/DM/Mine/Sources/
    second-thoughts` gets its new worktree at `/c/DM/Mine/Sources/{worktree_name}`,
    never under `second-thoughts/`.
+9. **Bootstrap a newly created worktree from Primary** before launching its first
+   worker (`new_worktree_bootstrap`). Copy Primary's repository-local GitNexus and
+   Knowns artifacts into the new worktree as independent snapshots — never symlink
+   them and never point the new worktree at Primary's live index or memory store.
+   Copy only from a verified Primary path and only while no source artifact is being
+   written. For GitNexus, refresh/register the copied snapshot from inside the new
+   worktree and require a fresh status before it can provide confirmed evidence; use
+   the new worktree's absolute path when selecting it in MCP. For Knowns, copy every
+   configured repository-local artifact (including `KNOWNS.md` or `.knowns/` when
+   present), then report any tracked file made dirty by taking Primary's version.
+   Verify source and destination checksums for copied artifacts. A missing optional
+   artifact is reported and falls back through `knowledge_sources.on_unavailable`;
+   a copy, refresh, or verification failure stops worker launch rather than silently
+   using Primary's state.
 
 **Sibling placement splits by who creates the worktree.** When Lead itself issues
 the creation, sibling placement is a hard requirement: verify the path before

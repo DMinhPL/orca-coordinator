@@ -101,3 +101,12 @@ with each other, that is reported to Lead rather than resolved by file order. Se
 4. **Everything routes through Lead.** One reporter to the user, one arbiter of
    conflicts, one decision log — and Lead coordinates rather than performs. A phase
    without its specialist's `worker_done` has no conclusion, whoever else looked at it.
+
+No band is small enough to change commitment 4. `complexity_assessment.triage`'s fast
+path collapses *scoring and mode* ceremony for an XS task — it never collapses the
+dispatch. Lead must never offer, suggest, or accept a shortcut ("direct
+implementation", "just do it yourself", or similar) where Primary writes or modifies
+code instead of dispatching a worker
+(`orchestration.forbidden_fallbacks: primary_direct_implementation`). If the Orca
+runtime cannot be reached, that is a blocker to stop and report — never a reason to
+implement the task directly instead.

@@ -17,6 +17,11 @@ optimisation.
 
 ## Dispatch
 
+The complete envelope below is an **internal worker contract**, not a user-facing
+status message. Send it to the worker and record it in the audit trail, but print
+only the compact launch and ready receipts from `workflows.md` §§ 1.3a–1.3b. Reveal
+additional fields only when the user asks or when a dispatch failure needs context.
+
 ```json
 {
   "task_id": "TASK-0142",
@@ -99,6 +104,29 @@ optimisation.
   the YAML for what an overlay file may and may not do, and how a conflict
   between two overlay files is handled.
 
+### Role Bootstrap ACK (mandatory first output)
+
+A role skill is a document, not a hard control — a worker can read it and still drift.
+Before doing any task work, every BA/Dev/QC worker's **first returned output** must be
+this block:
+
+```text
+ROLE BOOTSTRAP ACK — <BA|Dev|QC>
+- Role files loaded: <exact paths actually read, e.g. skills/orca-dev/SKILL.md,
+  references/agents-models.yaml, references/modification-policy.md>
+- Envelope validated: complete / rejected — <reason if rejected>
+- Task understood in one sentence: <restate the mission>
+```
+
+Lead renders this as the compact **Bootstrap ACK receipt** (`workflows.md` § 1.3b)
+and does not release the worker into task work until the block is present and its
+declared file list matches the internal delivery manifest. The exact paths remain
+internal on success; the printed receipt reports the role skill and supporting-file
+count. A worker
+that starts producing findings, a diff, or a verdict without this block first is
+treated as unverified — the same as a crashed worker under `workflows.md` § 1.3 —
+and re-dispatched, not trusted on the strength of a verified identity alone.
+
 ### Rejecting an incomplete envelope
 
 `reject_incomplete_envelope: true`. A worker returns the envelope without starting
@@ -110,7 +138,8 @@ have, because the inference is invisible until QC.
 ## Minimal form for small tasks
 
 Full JSON for a two-line change is exactly the ceremony `optimization` exists to
-avoid. Five lines carry the same contract:
+avoid. Five lines carry the same internal contract; this is still sent to the worker,
+not printed as the user-facing launch receipt:
 
 ```
 → DEV · codex/gpt-5.6-luna/medium · TASK-0187 · tier M2
@@ -185,3 +214,5 @@ criterion — so tagging honestly is what keeps the downstream gates meaningful.
    context that destroys the independence the provider split was designed to create.
 5. **Every envelope is a line in `decisions.jsonl`.** The envelope sequence is the
    audit trail of who was asked to do what, on what basis.
+6. **No task work before the Role Bootstrap ACK.** A verified worker identity is not
+   a ready specialist — see "Role Bootstrap ACK" above.

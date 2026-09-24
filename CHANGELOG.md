@@ -24,16 +24,49 @@ Changes since v25 are documented here pending the next config-versioned release:
   git operation, while rejected changes remain uncommitted and local.
 - `~ modification_policy.branch_naming` — Lead names an M2+ work branch and Dev
   creates it at dispatch start.
-- `+ workflows.md` verified launch receipt — record the Run, Task, Dispatch,
-  worker configuration, verification state, workspace, and branch immediately
-  after a verified worker launch.
+- `+ workflows.md` verified launch receipt — retain complete launch metadata
+  internally while printing only a short role/worker/workspace/scope/dispatch
+  summary after verification.
 - `+ worktree_selection_policy` safeguards — distinguish Lead-created worktrees
   from Orca-managed provisioning, enforce one active worker per task role/stage,
   and keep workspace display identity separate from branch identity.
+- `+ worktree_selection_policy.new_worktree_bootstrap` — after creating a worktree,
+  copy Primary's repository-local GitNexus and Knowns artifacts as independent
+  snapshots, refresh and register GitNexus from the destination root, verify copied
+  state, and stop before worker launch on copy or refresh failure.
 - `~ README.md` and project-overlay guidance — document independent
   `extra-skills/{role}/*.md` overlays and add a worked-example reference.
+- `~ orca-closeout/SKILL.md` § 6 — the final report is printed as rendered
+  markdown, mandatory in every mode and band: an outcome headline with icon, a
+  summary table, one Dispatches row per dispatch including retries, Changes,
+  Verification (including what was not run), Notes & risks, and a closing
+  `⏸ Your call` block of numbered decisions. Short cells, a fixed icon set.
+  Launch and Bootstrap ACK receipts are unchanged.
+- `~ orca-lead/SKILL.md` step 9 — Lead must read closeout § 6 and use its table
+  format before writing the final report; a prose final report is a format defect.
 - `~ SKILL.md` — rename the package skill to `orca-coordinator` and align its
   formatting with the current documentation style.
+- `+ workflows.md` § 1.3b and `+ handoff-protocol.md` Role Bootstrap ACK — every
+  BA/Dev/QC worker's first returned output must now be a `ROLE BOOTSTRAP ACK`
+  block naming the role files it actually read and restating its mission; Lead
+  prints a short ready receipt and does not release the worker into task work until
+  the block is present and its declared file list matches the internal delivery
+  manifest. A
+  verified identity (`exactWorker: true`) no longer by itself means the worker
+  loaded its role skill.
+- `~ orca-closeout/SKILL.md` § 6 — the final report now has a concrete printed
+  template (workflow/run/workspace header, one section per role actually
+  dispatched with its dispatch id and verdict, status gate, risks, rollback, and
+  a mandatory "Next step for you") instead of a bare list of topics to cover.
+- `+ orchestration.forbidden_fallbacks: primary_direct_implementation` and
+  `+ verification: verify_orchestration_runtime_reachable_before_classification` —
+  closes an observed gap where Lead offered the user a "direct implementation"
+  shortcut (not a documented mode) on an XS task and then wrote the code itself
+  in Primary. No band skips dispatch; the fast path only collapses scoring/mode
+  ceremony. Lead now verifies the orchestration runtime at step 0, before
+  classification, and treats an unreachable runtime as a blocker to report, never
+  a reason to implement directly. See `orca-lead/SKILL.md` step 0 and `~ do not`
+  list, and `workflows.md` § 1.1.
 
 ## v25 — project overlay is a directory of files, not one file
 

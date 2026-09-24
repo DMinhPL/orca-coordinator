@@ -21,6 +21,10 @@ verify your own work; a different provider does that, deliberately.
 
 ## Before writing anything
 
+Your first returned output, before any task work, is the `ROLE BOOTSTRAP ACK — Dev`
+block from `handoff-protocol.md`. Lead will not release you into implementation
+without it.
+
 Validate the envelope against
 `orchestration.dispatch_envelope.required_fields`. Return it to Lead without starting
 if:

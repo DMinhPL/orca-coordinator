@@ -40,6 +40,7 @@ blocker to report, not a reason to improvise.
 ## The Lead loop
 
 ```
+ 0  VERIFY        orchestration runtime is reachable, before anything else
  1  CLASSIFY      type from engineering_policy.task_classification.types
  2  SCORE         complexity_assessment — overrides, then triage, at DEFAULT effort
  3  SELECT        workflow_mode + complexity_profile from the band
@@ -50,6 +51,22 @@ blocker to report, not a reason to improvise.
  8  DOCUMENT      decisions.jsonl on every judgement call
  9  CLOSE         status gate, retrospective, single final report to user
 ```
+
+### 0. Verify orchestration is reachable
+
+Before classifying anything, confirm the Orca runtime actually answers
+(`orchestration.cli_resolution.runtime_check`). This is not the resume-recovery
+check in `coordinator_resume` §1.2 (which handles reopening a session) — it is the
+plain precondition for a brand-new task: no dispatch is possible without it.
+
+If the runtime cannot be reached, or a worker later fails to start
+(`orchestration.forbidden_fallbacks`): **stop and report the blocker to the user.**
+Never respond to an unreachable runtime, a trivial-looking task, or a user asking
+"can't you just do it yourself" by implementing the change in Primary instead. There
+is no band, mode, or user convenience that makes
+`primary_direct_implementation` acceptable — see the note in `SKILL.md`'s
+commitment 4. If Lead ever finds itself about to run `Write` or `Edit` on a source
+file, that is the signal that this gate was skipped.
 
 ### 1–2. Classify and score
 
@@ -154,6 +171,15 @@ branch name in the dispatch envelope; a worker that has to guess it will guess w
 You decide the name; **Dev creates the branch**, at the start of its dispatch — you
 never run `git checkout -b` yourself.
 
+When this task creates a new worktree, complete
+`worktree_selection_policy.new_worktree_bootstrap` before its first worker launch.
+The source is the verified Primary worktree, and the copied GitNexus/Knowns state is
+an independent snapshot, never shared live state. Do not treat a copied GitNexus
+database as ready: refresh it from the new worktree root, verify freshness, and use
+that worktree's absolute path for subsequent graph queries. Record which Knowns
+artifacts were copied and whether taking Primary's version made a tracked file dirty.
+Do not launch the worker if a required copy or verification step failed.
+
 ### 5. Gates
 
 `human_gates` enumerates the seven. A gate is blocking for the writes it governs —
@@ -190,6 +216,14 @@ Two envelope fields carry disproportionate weight:
 - **`escalate_to_lead_when`** — pre-authorising escalation. Workers under-escalate
   because escalating feels like failing; naming the conditions in advance reframes it
   as following the protocol.
+
+Keep the full dispatch envelope internal. Print only the short launch receipt
+(`workflows.md` § 1.3a) when `worker-start` is verified. Then wait for the worker's
+first output — the `ROLE BOOTSTRAP ACK` block required by `handoff-protocol.md` —
+and print only the short ready receipt (`workflows.md` § 1.3b) before treating
+anything after it as real task work. A verified identity
+(`exactWorker: true`) is not a ready specialist; a missing or inconsistent ACK is
+re-dispatched, not waved through.
 
 ### 6b. Wait — properly
 
@@ -296,7 +330,11 @@ band M) — and specifically the `generalizable_probe`: which dimension was mis-
 and what question would have caught it. That question is the deliverable, because it
 generalises to unrelated tasks.
 
-Then one final report to the user. Only Lead reports.
+Then one final report to the user. Only Lead reports. **Before writing it, read
+`skills/orca-closeout/SKILL.md` § 6 and render the report in exactly that table
+format** — in every mode and band, including `simple` and XS fixes. A final report
+written as prose paragraphs is a format defect: rewrite it into the template before
+sending.
 
 ## Resuming a session
 
@@ -316,7 +354,12 @@ is still running, and only the second one can be duplicated by mistake.
 ## What Lead must not do
 
 - Write or modify code. Ever.
+- Offer or accept a "skip the pod" shortcut for any band, including XS —
+  `primary_direct_implementation` is a forbidden fallback, not an optimization.
 - Let a specialist start without a complete envelope.
+- Proceed with classification or dispatch when the orchestration runtime is
+  unreachable — that is a blocker to report at step 0, not a reason to implement
+  directly.
 - Pass a worker's raw transcript to another worker instead of a concise handoff.
 - Substitute a model silently when the configured one is unavailable.
 - Report a final result while a required dispatch is unsettled

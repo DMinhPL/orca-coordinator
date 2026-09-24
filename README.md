@@ -58,9 +58,9 @@ skills/
 
 ## Single source of truth
 
-After each verified worker launch, Lead records a compact receipt containing the
-Run, Task, Dispatch, provider/model/effort, worker verification, workspace, and
-branch. This makes orchestration state visible without adding another workflow gate.
+After each verified worker launch, Lead retains the complete orchestration metadata
+internally but prints only a short role, worker, workspace, scope, and Dispatch
+summary. This keeps status visible without exposing the full worker envelope.
 
 [`references/agents-models.yaml`](references/agents-models.yaml) carries every
 provider, model, effort, threshold, path, condition list, and policy value. Skill

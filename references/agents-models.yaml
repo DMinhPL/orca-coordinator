@@ -317,6 +317,10 @@ complexity_assessment:
         band: XS
         recorded_total: fast_path
         dimensions_not_scored: [d1, d4, d5, d6]
+      # The fast path collapses SCORING and MODE ceremony only. It never
+      # authorizes Primary/Lead to implement the change itself — XS still
+      # dispatches a Dev worker under `simple` mode. See
+      # orchestration.forbidden_fallbacks: primary_direct_implementation.
     otherwise: score_all_seven_dimensions
     record: [d2, d3, d7, fast_path_taken, hard_override_matched]
     # d5 is the dimension most commonly under-scored across pods and is
@@ -1229,7 +1233,14 @@ orchestration:
     - explore_subagent
     - plan_subagent
     - general_purpose_subagent
+    # No band is small enough to justify this one. fast_path (complexity_assessment
+    # .triage) collapses scoring and mode ceremony, never the dispatch itself — an
+    # XS task still dispatches Dev. Lead must never offer, suggest, or accept a
+    # user-facing option ("direct implementation", "just do it myself", etc.) that
+    # has Primary write or modify code instead of dispatching a worker.
+    - primary_direct_implementation
   verification:
+    - verify_orchestration_runtime_reachable_before_classification # preflight; on failure: stop and report, never self-implement
     - verify_worker_is_registered_in_orca_orchestration
     - verify_worker_provider_before_work
     - verify_worker_model_before_work
@@ -1254,6 +1265,13 @@ orchestration:
       - return_artifacts
     reject_incomplete_envelope: true
     on_reject: return_to_lead_without_starting_work
+    presentation:
+      full_envelope_is_internal: true
+      never_print_full_envelope_by_default: true
+      launch_fields: [role, worker, workspace_and_branch, scope_summary, dispatch_id]
+      ready_fields: [role, loaded_resource_count, one_sentence_mission]
+      format: short_labeled_lines_without_table
+      show_additional_fields_only_when: [user_requests_details, dispatch_failure_requires_context]
   return_envelope:
     required_fields:
       - task_id
@@ -1350,7 +1368,21 @@ primary_session_policy:
 worktree_selection_policy:
   applies_before: [ba_dispatch, dev_dispatch, qc_dispatch]
   pool_target_size: 3
-  primary_excluded_from_pool: true
+  # v24: primary_excluded_from_pool was an unconditional hard exclusion. Some
+  # projects genuinely only need one worktree at a time; forcing a second one
+  # into existence just to satisfy this gate was pure overhead. Primary can now
+  # be offered as a candidate, but only through an explicit per-task opt-in —
+  # never inferred from silence, a prior answer, or task simplicity alone.
+  primary_excluded_from_pool:
+    default: true
+    override_allowed: true
+    override_requires: explicit_user_confirmation_naming_primary_this_task
+    override_never_inferred_from: [silence, past_approval_on_another_task, task_simplicity, single_worktree_convenience_alone]
+    ask_only_when: [pool_is_empty_or_all_non_primary_candidates_are_dirty_or_unsafe, user_states_intent_to_use_only_one_worktree]
+    confirmation_prompt_must_state: [that_primary_would_become_an_execution_worktree, current_primary_branch_and_dirty_state, that_this_answer_applies_to_this_task_only]
+    on_confirmed: treat_primary_worktree_as_a_normal_pool_candidate_for_this_dispatch_only
+    on_declined_or_unanswered: keep_default_exclusion_and_fall_back_to_pool_empty_procedure
+    does_not_change: allow_primary_as_worker  # Primary's chat session itself still never executes; only its worktree may be selected for a fresh worker to bind to
   inventory_required_fields:
     - worktree_name
     - absolute_path
@@ -1411,6 +1443,29 @@ worktree_selection_policy:
       report_to_user: always
       report_line_example: 'workspace_2: physically nested under Primary; Orca-managed'
       do_not_relocate_or_recreate_automatically: true
+  # A new checkout does not inherit ignored repository-local knowledge artifacts.
+  # Seed them from Primary, but keep the destination isolated and rebind GitNexus
+  # before any worker relies on it.
+  new_worktree_bootstrap:
+    trigger: after_successful_creation_before_first_worker_launch
+    source: verified_primary_worktree_absolute_path
+    copy_semantics: independent_snapshot
+    symlinks_or_shared_live_state: forbidden
+    require_source_quiescent: true
+    verify_after_copy: [source_and_destination_paths, checksums, destination_ownership]
+    gitnexus:
+      repository_local_candidates: ['.gitnexus/']
+      copy_primary_version_when_present: true
+      refresh_from_new_worktree_root_after_copy: required
+      require_fresh_status_before_confirmed_evidence: true
+      mcp_repo_selector: new_worktree_absolute_path
+      never_reuse_primary_registry_handle: true
+    knowns:
+      repository_local_candidates: ['KNOWNS.md', '.knowns/', project_configured_knowns_paths]
+      copy_primary_version_when_present: true
+      report_tracked_destination_files_made_dirty: true
+    missing_optional_artifact: report_and_apply_knowledge_sources_on_unavailable
+    on_copy_refresh_or_verification_failure: stop_before_worker_launch_and_report
   worker_launch_after_selection:
     workspace_reuse_does_not_imply_session_reuse: true
     start_fresh_supervised_worker_bound_to_selected_worktree: true
