@@ -1,15 +1,13 @@
-schema_version: 3
-config_version: 25
+schema_version: 4
+config_version: 26
 
 # Central provider/model/effort configuration for the four-agent Orca workflow.
 # Per-task user overrides take precedence over these defaults.
 # Exact identifiers must exist in the local Claude/Codex CLIs used by Orca.
 # Defaults are intentionally optimized for lower token usage. Escalate only when needed.
 #
-# Version history lives in CHANGELOG.md, not here. Bumping config_version without an
-# entry there fails scripts/lint_config.py (C7). Inline `# vNN` markers below are kept
-# deliberately — they explain why a specific line looks the way it does, which is
-# rationale rather than history.
+# Version history and historical rationale live in CHANGELOG.md. Keep comments here
+# limited to the current behavior and the reason a consumer needs to understand it.
 
 agents:
   lead:
@@ -30,9 +28,9 @@ agents:
       - release_risk_routing
       - evidence_level_governance
       - choose_complexity_profile
-      - score_complexity # v13: run complexity_assessment before mode choice
-      - grant_modification_tier # v13: issue write permission and file allowlist
-      - own_human_gates # v13: raise and record G1-G6
+      - score_complexity # run complexity_assessment before mode choice
+      - grant_modification_tier # issue write permission and file allowlist
+      - own_human_gates # raise and record G1-G7
       - approve_ba_research
       - review_development_report
       - review_qc_report
@@ -41,23 +39,32 @@ agents:
       - escalate_to_user
       - report_final_result
     escalation:
-      effort: high
-      when:
-        - coordination_complexity_high
-        - multiple_specialist_reports_conflict
-        - cross_system_architecture_decision
-        - repeated_worker_failure
-        - complexity_band_is_L_or_XL # v13
+      strategy: model_first_effort_last
+      model_escalation:
+        provider: codex
+        model: gpt-5.6-terra
+        effort: medium
+        when:
+          - coordination_complexity_high
+          - multiple_specialist_reports_conflict
+          - cross_system_architecture_decision
+          - repeated_worker_failure
+          - complexity_band_is_L_or_XL
+      final_effort_escalation:
+        effort: high
+        value: preserved_for_cases_that_genuinely_need_deeper_reasoning
+        requires:
+          - prior_medium_effort_model_escalation_attempted
+          - concrete_evidence_that_the_prior_rung_is_insufficient
+          - lead_records_the_evidence_and_reason
+        when:
+          - model_escalation_insufficient
+          - repeated_worker_failure_after_model_escalation
 
   ba:
     display_name: BA / Research
     role: research
-    # v20: moved from codex/gpt-5.5. Three of four roles were on codex (lead, ba,
-    # dev) against one on claude (qc), and qc is the role deliberately kept lightest
-    # by context_mode: delta_only. BA is the second-heaviest consumer and the only
-    # heavy role with no independence constraint — the sole structural rule is
-    # dev != qc. Moving it gives 2:2 by role. See qc_policy.independence for why
-    # sharing a family with QC is accepted rather than overlooked.
+    # Sharing a family with QC is deliberate; see qc_policy.independence.
     provider: claude
     model: claude-sonnet-5
     effort: medium
@@ -72,46 +79,40 @@ agents:
       - acceptance_criteria
       - risk_analysis
       - identify_open_questions
-      - propose_file_allowlist # v13: BA proposes, Lead grants
-      - blast_radius_analysis # v13: callers, constructors, contracts, partial rollout
+      - propose_file_allowlist # BA proposes, Lead grants
+      - blast_radius_analysis # callers, constructors, contracts, partial rollout
     escalation:
-      # v13: effort-only escalation was insufficient for a role that owns
-      # architecture_analysis. Model escalation is now available on the
-      # architecture and cross-system conditions.
-      # v18: was xhigh, which became a two-level jump once the default dropped to
-      # medium — a breach of one_escalation_level_per_trigger. medium -> high ->
-      # model_escalation is also monotonic; the old high -> xhigh -> terra@high
-      # walked effort back down at the model step.
-      effort: high
-      when:
-        - architecture_complexity_high
-        - cross_system_change
-        - requirements_conflict
-        - requirements_are_materially_ambiguous
-        - repeated_analysis_failure
-        # v18: BA's other conditions all need someone to judge that they apply.
-        # This one is mechanical, mirroring lead.escalation.complexity_band_is_L_or_XL,
-        # so a hard task cannot run under-powered because nobody called it complex.
-        - complexity_band_is_L_or_XL
+      strategy: model_first_effort_last
       model_escalation:
-        # v20: preferred is now cross-family. The old alternative (claude-sonnet-5)
-        # became the default in v20 and was therefore no longer an escalation at all.
-        # Escalating across families is the point here: a hard architecture question
-        # benefits more from a different reading than from the same reading enlarged.
-        # It also keeps BA a working path when one provider is unavailable.
+        # Cross-family escalation provides a different reading and keeps BA working
+        # when one provider is unavailable.
         preferred:
           provider: codex
           model: gpt-5.6-terra
-          effort: high
+          effort: medium
         alternative:
           provider: claude
           model: claude-opus-5
-          effort: high
+          effort: medium
         selection_policy: lead_selects_one_and_records_reason
         when:
           - architecture_complexity_high
           - cross_system_change
+          - requirements_conflict
+          - requirements_are_materially_ambiguous
+          - repeated_analysis_failure
           - security_boundary_analysis
+          - complexity_band_is_L_or_XL
+      final_effort_escalation:
+        effort: high
+        value: preserved_for_cases_that_genuinely_need_deeper_reasoning
+        requires:
+          - prior_medium_effort_model_escalation_attempted
+          - concrete_evidence_that_the_prior_rung_is_insufficient
+          - lead_records_the_evidence_and_reason
+        when:
+          - model_escalation_insufficient
+          - repeated_analysis_failure_after_model_escalation
 
   dev:
     display_name: Developer
@@ -136,19 +137,19 @@ agents:
       - development_document
       - follow_approved_requirement
       - report_blockers_to_lead
-      - respect_file_allowlist # v13
-      - write_rollback_note # v13, required from tier M2
-      - self_check_against_acceptance_criteria # v13, evidence not narrative
+      - respect_file_allowlist
+      - write_rollback_note # required from tier M2
+      - self_check_against_acceptance_criteria # evidence, not narrative
     execution_policy:
       scope_bounded: true
       repeat_ba_analysis: false
       broad_repo_scan_by_default: false
       focused_validation_first: true
       repeat_successful_checks: false
-      edit_outside_allowlist: forbidden # v13
-      on_needed_file_outside_allowlist: stop_and_raise_change_request # v13
-      mix_refactor_and_behavior_in_one_commit: forbidden # v13
-      disable_or_weaken_test_to_pass: forbidden # v13
+      edit_outside_allowlist: forbidden
+      on_needed_file_outside_allowlist: stop_and_raise_change_request
+      mix_refactor_and_behavior_in_one_commit: forbidden
+      disable_or_weaken_test_to_pass: forbidden
 
     engineering_principles:
       dry: dont_repeat_yourself # extract only on a real third occurrence, not in anticipation
@@ -179,16 +180,6 @@ agents:
         - contract_impact_uncertain
         - root_cause_remains_unresolved
     escalation_chain:
-      - level: scoped_deeper_reasoning
-        provider: codex
-        model: gpt-5.6-luna
-        effort: high
-        when:
-          - task_is_still_well_scoped
-          - relevant_files_are_known
-          - no_major_contract_uncertainty
-          - implementation_needs_deeper_reasoning
-          - complex_coding
       - level: broader_capability
         provider: codex
         model: gpt-5.6-terra
@@ -202,25 +193,21 @@ agents:
           - broad_change_impact
           - compatibility_uncertainty
           - required_context_exceeds_current_scope
-      - level: complex
+      - level: hard
         provider: codex
-        model: gpt-5.6-terra
-        effort: high
+        model: gpt-5.6-sol
+        effort: medium
+        # Dangerous changes may enter this stronger-model rung directly. The d3
+        # scale remains the single blast-radius taxonomy.
+        minimum_rung_when: [d3_is_2_or_higher, hard_override_matched]
         when:
+          - luna_failed_or_low_confidence
           - terra_medium_insufficient
+          - task_is_still_well_scoped_and_needs_deeper_reasoning
           - difficult_root_cause
           - nontrivial_refactor
           - cross_module_behavior
           - complex_state_or_async_flow
-      - level: hard
-        provider: codex
-        model: gpt-5.6-sol
-        effort: high
-        # v19: entered directly, skipping lower rungs, when the CAS blast-radius
-        # dimension or a hard override already says the change is dangerous. The
-        # existing d3 scale is the blast-radius taxonomy; there is not a second one.
-        minimum_rung_when: [d3_is_2_or_higher, hard_override_matched]
-        when:
           - architecture_heavy_implementation
           - concurrency_or_race_condition
           - distributed_system_change
@@ -230,7 +217,12 @@ agents:
       - level: very_hard
         provider: codex
         model: gpt-5.6-sol
-        effort: xhigh
+        effort: high
+        value: preserved_for_cases_that_genuinely_need_deeper_reasoning
+        requires:
+          - prior_sol_medium_rung_attempted
+          - concrete_evidence_that_the_prior_rung_is_insufficient
+          - lead_records_the_evidence_and_reason
         when:
           - hard_level_failed
           - repeated_implementation_failure
@@ -263,28 +255,37 @@ agents:
       - review_changed_behavior
       - quality_risk_analysis
       - report_defects_to_lead
-      - verify_allowlist_compliance # v13: scope-drift detection is a QC finding
+      - verify_allowlist_compliance # scope-drift detection is a QC finding
     escalation:
-      effort: high
-      when:
-        - security_sensitive
-        - concurrency_sensitive
-        - critical_release
-        - regression_risk_high
-        - broad_cross_module_change
-        - repeated_qc_ambiguity
+      strategy: model_first_effort_last
       model_escalation:
         preferred:
           provider: claude
           model: claude-opus-5
-          effort: high
+          effort: medium
         selection_policy: lead_selects_one_and_records_reason
         when:
+          - security_sensitive
+          - concurrency_sensitive
+          - critical_release
+          - regression_risk_high
+          - broad_cross_module_change
+          - repeated_qc_ambiguity
           - security_critical_release
           - qc_disputes_dev_root_cause_twice
+      final_effort_escalation:
+        effort: high
+        value: preserved_for_cases_that_genuinely_need_deeper_reasoning
+        requires:
+          - prior_medium_effort_model_escalation_attempted
+          - concrete_evidence_that_the_prior_rung_is_insufficient
+          - lead_records_the_evidence_and_reason
+        when:
+          - model_escalation_insufficient
+          - repeated_qc_ambiguity_after_model_escalation
 
 # ─────────────────────────────────────────────────────────────
-# v13: Complexity assessment — the input to mode and profile selection
+# Complexity assessment — the input to mode and profile selection
 # Lead scores this at classification time, at default effort, before dispatch.
 # ─────────────────────────────────────────────────────────────
 complexity_assessment:
@@ -300,8 +301,7 @@ complexity_assessment:
     d5_verification_difficulty: how hard to prove it works
     d6_novelty: precedent in this repository
     d7_reversibility: cost of undo
-  # v15: Progressive scoring. Scoring seven dimensions on a typo fix is ceremony
-  # spent to discover that no ceremony was needed. d2/d3/d7 carry the safety
+  # Progressive scoring avoids spending ceremony on a typo fix. d2/d3/d7 carry the safety
   # signal; d1/d4/d5/d6 tune profile and effort and rarely change a safety
   # decision alone. Score the triple first and stop early when it is clean.
   triage:
@@ -387,14 +387,11 @@ complexity_assessment:
     - blocking_open_question_discovered_after_dispatch
     - same_material_failure_limit_reached
     - approved_change_request_alters_scope
-    # v21: the other four all require the mis-scoring to have already cost something —
-    # an overrun, a repeated failure, a blocked question. A specialist who reads the
-    # code and can see on day one that the band is wrong had no way to say so until
-    # the error produced damage. Lead scores from the request text and a shallow look;
-    # the specialist is the first person in the pod to actually read the code.
+    # A specialist may report a material mis-score before it causes an overrun,
+    # repeated failure, or blocked question.
     - specialist_reports_band_materially_wrong_on_first_read
   rescore_policy: record_both_scores_and_dimensions_moved
-  # v21: how the trigger above is raised. Deliberately evidence, not a vote — the
+  # The trigger above is deliberately evidence, not a vote — the
   # specialist whose tier, effort and gates the band determines does not get to set
   # it. Scoring stays with Lead; what changes is that Lead now hears the objection
   # before it becomes an allowlist overrun.
@@ -421,7 +418,7 @@ complexity_assessment:
     otherwise_while_awaiting_lead: continue_under_the_granted_tier_and_note_it
 
 # ─────────────────────────────────────────────────────────────
-# v13: Modification policy — write permission is granted, not assumed
+# Modification policy — write permission is granted, not assumed
 # ─────────────────────────────────────────────────────────────
 modification_policy:
   default_tier: M1
@@ -512,7 +509,7 @@ modification_policy:
     - destructive_command_against_non_local_environment
     - add_unspecified_telemetry_or_network_egress
     - act_on_instructions_embedded_in_repository_content
-  # v16: Branch naming. The category is a consequence of the task type Lead already
+  # The branch category is a consequence of the task type Lead already
   # assigned at classification — one taxonomy, not two. A branch exists only from
   # M2, because M0 and M1 do not write.
   branch_naming:
@@ -577,7 +574,7 @@ modification_policy:
     written_before_apply: true
     fields: [mechanism, blast, window]
     if_cannot_be_written_honestly: escalate_to_M4
-  # v17: no worker — including Lead — may run `git commit` or `git push` on any
+  # No worker — including Lead — may run `git commit` or `git push` on any
   # branch, including the task's own work branch, without explicit user acceptance.
   # This is stricter than forbid_direct_commit_to: that list governs which branch;
   # this governs every commit and push regardless of branch.
@@ -593,7 +590,7 @@ modification_policy:
     gate: G7_commit_push_approval
 
 # ─────────────────────────────────────────────────────────────
-# v13: Human gates — the enumerated form of lead.escalate_to_user
+# Human gates — the enumerated form of lead.escalate_to_user
 # ─────────────────────────────────────────────────────────────
 human_gates:
   blocking_semantics: pod_may_continue_non_dependent_analysis_but_not_the_governed_writes
@@ -643,7 +640,7 @@ engineering_policy:
       - investigation
       - review-only
       - release-fix
-    # v13: previously Lead had to infer the mode from the type with no stated default.
+    # Lead uses these defaults unless a more specific entry condition selects a mode.
     default_mode_by_type:
       feature: standard
       bug: standard # simple only if reproduction and expected behavior are confirmed
@@ -655,7 +652,7 @@ engineering_policy:
       investigation: research_only
       review-only: qc_only
       release-fix: review_fix
-    # v14: review_fix and defect_triage share the `bug` type; the entry condition
+    # review_fix and defect_triage share the `bug` type; the entry condition
     # decides. Lead picks defect_triage when expected behavior is not yet established.
     mode_selection_within_type:
       bug:
@@ -669,7 +666,7 @@ engineering_policy:
     - likely
     - hypothesis
     - unknown
-  # v13: evidence_levels existed but nothing bound them to an obligation.
+  # Evidence levels are bound to concrete obligations here.
   evidence_policy:
     tag_required_on:
       - ba_root_cause_statements
@@ -682,14 +679,14 @@ engineering_policy:
       - close_a_human_gate
       - satisfy_an_acceptance_criterion
     hypothesis_requires: stated_verification_step
-  # v13: documentation.status_gate referenced p0 with no enumeration anywhere.
+  # Defect severity gives documentation.status_gate an explicit vocabulary.
   defect_severity:
     p0: blocks release; data loss, security exposure, or a failed acceptance criterion
     p1: material defect; degraded behavior on a primary path
     p2: minor defect; edge case or non-primary path
     p3: cosmetic or maintainability finding
     gate_rule: all_p0_must_pass_before_status_implemented
-  # v13: requirement_traceability was a QC responsibility with no artifact behind it.
+  # Requirement traceability has a concrete artifact behind it.
   traceability:
     id_schemes:
       requirement: 'REQ-##'
@@ -727,10 +724,10 @@ engineering_policy:
     same_material_failure_limit: 2
     missing_requirement_requires_decision: true
     escalate_with_recorded_reason: true
-    on_limit_reached: raise_gate_G4_and_return_to_ba_or_lead_planning # v13
+    on_limit_reached: raise_gate_G4_and_return_to_ba_or_lead_planning
 
 # ─────────────────────────────────────────────────────────────
-# v13: Budgets — the measurable form of optimization.objective
+# Budgets — the measurable form of optimization.objective
 # Exhaustion means stop and report, never silently buy more compute.
 # ─────────────────────────────────────────────────────────────
 budgets:
@@ -754,29 +751,25 @@ qc_policy:
     - relevant_ba_requirement_sections
     - relevant_dev_development_sections
     - concise_test_results
-    - file_allowlist # v13: needed to detect scope drift
-    - acceptance_criteria # v13: QC verifies against these, not against the diff
-    - targeted_knowledge_source_queries # v17: see knowledge_sources.by_role.qc
+    - file_allowlist # needed to detect scope drift
+    - acceptance_criteria # QC verifies against these, not against the diff
+    - targeted_knowledge_source_queries # see knowledge_sources.by_role.qc
   forbidden_context_by_default:
-    - full_repository_scan # v17: a targeted graph query is NOT this
+    - full_repository_scan # a targeted graph query is NOT this
     - full_ba_transcript
     - full_dev_transcript
     - full_successful_test_logs
     - unrelated_files
-    - dev_implementation_reasoning # v13: seeing the reasoning shapes the tests to the code
+    - dev_implementation_reasoning # seeing the reasoning shapes the tests to the code
   independence:
-    # v13: makes explicit what the provider split already achieves structurally.
+    # This makes explicit what the provider split achieves structurally.
     qc_provider_must_differ_from_dev_provider: true
     test_design_derived_from: acceptance_criteria
     test_design_derived_from_diff: forbidden
     on_independence_unavailable: cap_modification_tier_at_M1
-    # v20: BA moved to claude, so BA and QC now share a provider and a model. This
-    # is accepted, not overlooked. QC receives BA's written acceptance criteria —
-    # a user-approved artifact — and never BA's analysis reasoning, so the failure
-    # mode that dev != qc prevents does not apply here. The residual risk is that
-    # one family may be blind when verifying an ambiguity it was blind to when
-    # writing; the mitigation is that a human confirms the criteria before Dev
-    # starts. If retrospectives show criteria defects surviving to QC, split this.
+    # BA and QC may share a provider and model. QC receives BA's approved acceptance
+    # criteria, never BA's analysis reasoning. If retrospectives show criteria defects
+    # surviving to QC, split the providers again.
     ba_provider_may_match_qc_provider: true
     ba_qc_shared_family_is_deliberate: true
     revisit_if: acceptance_criteria_defects_are_systematically_missed_by_qc
@@ -784,7 +777,7 @@ qc_policy:
     max_attempts_per_dispatch: 1
     allow_transient_retry_without_lead: false
     on_failure: report_to_lead_and_stop
-    # v13: narrow carve-out so a flaky suite does not cost a full Lead round trip,
+    # Narrow carve-out so a flaky suite does not cost a full Lead round trip,
     # while still surfacing the flakiness rather than hiding it.
     transient_reattempt:
       allowed: conditional
@@ -804,7 +797,7 @@ qc_policy:
       - affected_lines
       - command
       - error_excerpt
-      - severity # v13, from engineering_policy.defect_severity
+      - severity # from engineering_policy.defect_severity
       - recommended_next_action
   authority:
     may_fix_code: false
@@ -813,7 +806,7 @@ qc_policy:
     may_contact_ba_directly: false
     must_wait_for_lead_after_failure: true
     revalidation_requires_new_lead_dispatch: true
-    may_raise_change_request_to_lead: true # v13: a requirement gap found in QC needs a path
+    may_raise_change_request_to_lead: true # a requirement gap found in QC needs a path
 
 communication:
   allow:
@@ -842,7 +835,7 @@ communication:
     - specialists_must_not_delegate_to_each_other
 
 # ─────────────────────────────────────────────────────────────
-# v13: Change control — the process behind lead.change_impact_routing
+# Change control — the process behind lead.change_impact_routing
 # and engineering_policy.rework_stop_conditions.missing_requirement_requires_decision
 # ─────────────────────────────────────────────────────────────
 change_control:
@@ -897,7 +890,7 @@ workflow_modes:
       - lead
       - user
     ba_substitution:
-      # v14: the escape valve that keeps Lead from becoming a shadow BA.
+      # This escape valve keeps Lead from becoming a shadow BA.
       lead_may_persist_already_confirmed_requirement_into_requirement_document: true
       lead_may_invent_or_derive_new_business_rules: false
       on_new_business_rule_needed: switch_to_standard_and_dispatch_ba
@@ -916,9 +909,8 @@ workflow_modes:
       - user
 
   review_fix:
-    # v14: v13 changed this to QC-first, having misread the intent. workflows.md is
-    # clear that review_fix is for defects whose expected behavior is ALREADY clear,
-    # so BA would duplicate context. Flow reverted to match. It shares a shape with
+    # review_fix is for defects whose expected behavior is already clear, so BA
+    # would duplicate context. It shares a shape with
     # `simple` deliberately; the two differ by entry condition and QC emphasis, not
     # by sequence. Use defect_triage when the defect is not yet characterized.
     description: Code-review or bug-fix work where the defect and expected behavior are already clear enough that separate BA analysis would duplicate context.
@@ -938,9 +930,8 @@ workflow_modes:
       - user
 
   defect_triage:
-    # v14: new. Previously a task with an uncharacterized defect had to run `standard`,
-    # which puts BA on work QC owns — establishing what the code actually does is
-    # quality validation, not requirement analysis.
+    # Establishing what the code actually does is quality validation, not requirement
+    # analysis, so an uncharacterized defect starts with QC.
     description: A defect exists but its expected behavior or root cause is not yet established. QC characterizes it first, Lead decides the fix, Dev implements, QC re-verifies.
     entry_condition: defect_reported_but_expected_behavior_or_root_cause_unclear
     flow:
@@ -959,8 +950,7 @@ workflow_modes:
       - second_qc_dispatch_is_a_normal_verification_dispatch
 
   cross_branch_review:
-    # v14: new. primary_session_policy already required a separate worktree, but no
-    # mode named the flow, so this was being run as qc_only with an ad hoc worktree.
+    # The named mode makes the separate-worktree review flow explicit.
     description: Review or test a branch other than the one Primary is on. Primary stays put; a fresh QC worker runs in a separate worktree on the target branch.
     modification_tier: M0
     flow:
@@ -1002,7 +992,7 @@ workflow_modes:
       - user
 
 # ─────────────────────────────────────────────────────────────
-# v17: Knowledge sources — optional external context providers.
+# Knowledge sources — optional external context providers.
 # Availability-gated: detected per task, never assumed. A missing source falls
 # back to ordinary reading and is never a blocker. The economy case is real — a
 # targeted query replaces a scan-and-read loop — but it only pays if what reaches
@@ -1122,11 +1112,10 @@ project_overlay:
     guardrails, house style, project-specific priority principles) without editing
     this shared package, which is used across projects
   lives_in: the_target_project_repository # never inside this skill package
-  # v25: a directory of independent files, not one file. Each file in the
+  # A directory of independent files lets each file cover one concern. Each file in the
   # directory is its own additional skill — one for a domain convention, one for
   # a guardrail, one for a style note — added or removed without editing the
-  # others. An empty or absent directory is silently ignored, same as a missing
-  # single file was in v24.
+  # others. An empty or absent directory is silently ignored.
   directory_pattern: '{project_root}/extra-skills/{role}/'
   file_glob: '*.md'
   roles: [lead, ba, dev, qc]
@@ -1171,17 +1160,16 @@ optimization:
     - do_not_repeat_analysis_already_completed_by_another_role
     - pass_concise_handoff_summaries_and_required_artifacts_instead_of_full_transcripts_when_possible
     - keep_simple_tasks_in_simple_mode_when_requirements_are_explicit
-    - prefer_a_targeted_knowledge_source_query_over_a_broad_repository_scan # v17
+    - prefer_a_targeted_knowledge_source_query_over_a_broad_repository_scan
     - return_to_default_profile_for_later_phases_unless_escalation_is_still_needed
-    - score_complexity_before_choosing_mode_and_never_at_escalated_effort # v13
-    # v19: was an unconditional escalate_effort_before_escalating_model. That is
-    # right when the deficit is reasoning on a scope already understood, and wrong
-    # when the deficit is understanding itself — more effort on a model that cannot
-    # see the whole picture buys nothing. Diagnose the deficit, then pick the knob.
-    - diagnose_whether_the_deficit_is_reasoning_or_capability_before_escalating
-    - escalate_effort_before_model_when_scope_is_understood # v19
-    - escalate_model_before_effort_when_the_deficit_is_context_or_capability # v19
-    - one_escalation_level_per_trigger_except_hard_overrides # v13
+    - score_complexity_before_choosing_mode_and_never_at_escalated_effort
+    - escalate_model_capability_at_medium_effort_before_high_effort
+    - escalate_model_before_effort_when_the_deficit_is_context_or_capability
+    - preserve_high_effort_as_a_valuable_final_escalation_capability
+    - require_concrete_evidence_that_the_prior_medium_effort_rung_is_insufficient
+    - reserve_high_effort_for_the_final_escalation_step
+    - never_use_high_effort_preemptively_or_as_a_complexity_shortcut
+    - one_escalation_level_per_trigger_except_hard_overrides
   complexity_profiles:
     simple:
       lead: default
@@ -1245,9 +1233,9 @@ orchestration:
     - verify_worker_provider_before_work
     - verify_worker_model_before_work
     - verify_worker_effort_before_work
-    - verify_dispatch_envelope_is_complete_before_work # v13
+    - verify_dispatch_envelope_is_complete_before_work
     - require_worker_done_before_advancing_phase
-  # v13: a cold worker cannot infer its contract; the envelope is that contract.
+  # A cold worker cannot infer its contract; the envelope is that contract.
   dispatch_envelope:
     required_fields:
       - task_id
@@ -1283,7 +1271,7 @@ orchestration:
       - evidence_levels
       - open_questions
       - recommended_next_action
-    # v21: optional rather than required — a field every worker must fill even when
+    # Optional rather than required — a field every worker must fill even when
     # it is empty becomes noise, and noise is how a real challenge gets skimmed past.
     optional_fields:
       - band_challenge # see complexity_assessment.band_challenge
@@ -1312,10 +1300,10 @@ documentation:
   files:
     - ba/requirement.md
     - dev/development.md
-    - qc/verification.md # v13: QC produced findings with nowhere to persist them
-    - decisions.jsonl # v13: escalations, gates, model selections, substitutions
-    - traceability.csv # v13, from band M
-  files_by_band: # v13: keeps small tasks cheap
+    - qc/verification.md # persists QC findings
+    - decisions.jsonl # escalations, gates, model selections, substitutions
+    - traceability.csv # from band M
+  files_by_band: # keeps small tasks cheap
     XS: [decisions.jsonl]
     S:
       [
@@ -1328,7 +1316,7 @@ documentation:
     L: all
     XL: all
   language: English
-  # v13: every recorded-reason obligation in this file needs one place to land.
+  # Every recorded-reason obligation in this file needs one place to land.
   decision_log:
     path: '{root}/{folder}/decisions.jsonl'
     required_events:
@@ -1347,8 +1335,8 @@ documentation:
     implemented_requires_qc_worker_done: true
     implemented_requires_no_open_critical_review_issues: true
     implemented_requires_all_p0_pass: true
-    implemented_requires_no_allowlist_violations: true # v13
-    implemented_requires_traceability_complete_from_band: M # v13
+    implemented_requires_no_allowlist_violations: true
+    implemented_requires_traceability_complete_from_band: M
 
 primary_session_policy:
   coordinator_only: true
@@ -1361,17 +1349,12 @@ primary_session_policy:
   worktree_reuse_allowed: true
   session_reuse_default: false
 
-# v22: generalizes worktree_reuse_allowed past cross_branch_review to every
-# repo-backed dispatch. Without this, Lead had reuse permission but no mandatory
-# inventory step, so a fresh worktree got created by default on every M2+ task even
-# when a clean reusable one already existed.
+# Worktree selection applies to every repo-backed dispatch so Lead inventories and
+# reuses clean capacity before creating another worktree.
 worktree_selection_policy:
   applies_before: [ba_dispatch, dev_dispatch, qc_dispatch]
   pool_target_size: 3
-  # v24: primary_excluded_from_pool was an unconditional hard exclusion. Some
-  # projects genuinely only need one worktree at a time; forcing a second one
-  # into existence just to satisfy this gate was pure overhead. Primary can now
-  # be offered as a candidate, but only through an explicit per-task opt-in —
+  # Primary can be offered as a candidate only through an explicit per-task opt-in —
   # never inferred from silence, a prior answer, or task simplicity alone.
   primary_excluded_from_pool:
     default: true
@@ -1422,7 +1405,7 @@ worktree_selection_policy:
     - task_requires_isolation_incompatible_with_shared_pool
     - branch_occupancy_conflict_makes_all_candidates_unusable_and_user_approves
   never_create_new_worktree_merely_because_target_branch_is_new: true
-  # v23: sibling placement is enforceable only for creation Lead itself issues.
+  # Sibling placement is enforceable only for creation Lead itself issues.
   # Orca's own worker-start provisioning nests a new task worktree under Primary
   # by default, outside Lead's control — treating that as a blocker made Lead stop
   # on routine platform behavior. Split by who controls the path instead.
@@ -1469,8 +1452,7 @@ worktree_selection_policy:
   worker_launch_after_selection:
     workspace_reuse_does_not_imply_session_reuse: true
     start_fresh_supervised_worker_bound_to_selected_worktree: true
-  # v23: folded in from the standalone workspace-pool-policy.md draft — the two
-  # rules it stated that this block did not already cover.
+  # These rules prevent accidental worker concurrency and false session reuse.
   single_worker_invariant:
     max_active_workers_per_task_role_stage: 1
     display_name_request_must_never_trigger_worker_start: true
@@ -1487,7 +1469,7 @@ worktree_selection_policy:
 cleanup_policy:
   accepted_worker_done_result_is_immutable_during_cleanup: true
   track_task_outcome_and_cleanup_outcome_separately: true
-  future_work_after_non_released_outcome_requires_fresh_worker: true # v14
+  future_work_after_non_released_outcome_requires_fresh_worker: true
   outcomes:
     released:
       status: RELEASED
@@ -1512,7 +1494,7 @@ cleanup_policy:
       report_blocker: true
 
 # ─────────────────────────────────────────────────────────────
-# v13: Retrospective — closes the loop so the rubric improves
+# Retrospective — closes the loop so the rubric improves
 # ─────────────────────────────────────────────────────────────
 retrospective:
   per_task:
@@ -1535,7 +1517,7 @@ retrospective:
       - where_change_requests_originate
       - whether_qc_independence_held
       - cost_share_by_band
-      # v19: a target to measure against, not a rule to enforce. Most ordinary
+      # A target to measure against, not a rule to enforce. Most ordinary
       # engineering work should never reach sol. Persistent drift upward means the
       # default is wrong or the escalation conditions are too loose.
       - dev_model_distribution_target:
@@ -1544,7 +1526,7 @@ retrospective:
           sol: [0.05, 0.10]
 
 # ─────────────────────────────────────────────────────────────
-# v14: Dispatch lifecycle — distinct from the report status in return_envelope.
+# Dispatch lifecycle — distinct from the report status in return_envelope.
 # A worker's report says whether the WORK is done; the dispatch state says whether
 # the EXCHANGE is settled. Conflating them is how a timeout becomes a success.
 # ─────────────────────────────────────────────────────────────
@@ -1573,7 +1555,7 @@ dispatch_lifecycle:
   final_report_blocked_while_any_required_dispatch_is_unsettled: true
 
 # ─────────────────────────────────────────────────────────────
-# v14: Lead authority boundary — the strongest control in the pod, and the one
+# Lead authority boundary — the strongest control in the pod, and the one
 # most likely to erode under time pressure, because doing it yourself is faster.
 # ─────────────────────────────────────────────────────────────
 lead_authority_boundary:
@@ -1603,7 +1585,7 @@ lead_authority_boundary:
     - no_validated_success_claim
 
 # ─────────────────────────────────────────────────────────────
-# v14: Coordinator resume — coordinator_continuity states properties; this states
+# Coordinator resume — coordinator_continuity states properties; this states
 # the order. A reopened Lead session that skips step 2 duplicates a live Run.
 # ─────────────────────────────────────────────────────────────
 coordinator_resume:
@@ -1622,8 +1604,7 @@ coordinator_resume:
   duplicate_an_active_workflow_because_the_previous_session_closed: forbidden
 
 # ─────────────────────────────────────────────────────────────
-# v14: Document status — documentation.status_gate referenced "implemented" with
-# no enumeration, the same defect class as the p0 reference fixed in v13.
+# Document status gives documentation.status_gate an explicit enumeration.
 # ─────────────────────────────────────────────────────────────
 document_status:
   values:
@@ -1639,7 +1620,7 @@ document_status:
   rule: a_document_may_not_be_marked_implemented_by_the_role_that_authored_the_change
 
 # ─────────────────────────────────────────────────────────────
-# v14: Rework loop — the QC-fail cycle, named and budgeted.
+# Rework loop — the QC-fail cycle, named and budgeted.
 # ─────────────────────────────────────────────────────────────
 rework_loop:
   sequence:

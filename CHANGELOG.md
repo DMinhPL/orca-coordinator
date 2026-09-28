@@ -14,9 +14,31 @@ Legend: `+` added · `~` changed · `-` removed
 
 ---
 
-## Unreleased — coordinator observability and authorization clarifications
+## v26 — high effort is the final escalation step
 
-Changes since v25 are documented here pending the next config-versioned release:
+`schema_version: 4`
+
+- `~ agents.{lead,ba,qc}.escalation` — replace the direct `medium` → `high`
+  jump with an explicit model-first sequence. The role first moves to a stronger
+  model at `medium`; `final_effort_escalation` may use `high` only after that model
+  escalation is insufficient.
+- `~ agents.dev.escalation_chain` — use `terra @ medium`, then `sol @ medium`, then
+  `sol @ high`. The intermediate `high` rungs and the final `xhigh` rung are removed,
+  so Dev has exactly one high-effort step and it is last.
+- `~ optimization.rules` — codify the quota-first invariant: increase model
+  capability at `medium` before increasing effort, reserve `high` for the final
+  escalation step, and require concrete evidence that the preceding rung was
+  insufficient. `high` remains an explicitly valued capability for work that
+  genuinely needs deeper reasoning; it is not a default, a preemptive choice, or
+  a shortcut based only on the task's complexity label.
+- `~ references/agents-models.yaml` comments — remove inline `# vNN` annotations
+  and historical migration prose. Operational rationale remains beside the policy;
+  version history belongs in this changelog.
+- `~ schema_version` `3` → `4` and `~ config_version` `25` → `26` because the
+  escalation shape changed for config consumers.
+
+This release also includes the coordinator observability and authorization
+clarifications accumulated since v25:
 
 - `+ modification_policy.commit_and_push_authorization` and
   `+ human_gates.G7_commit_push_approval` — require explicit user acceptance for
