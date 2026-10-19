@@ -82,6 +82,7 @@ the YAML wins and the skill file is the bug —
 | `references/handoff-protocol.md` | Dispatch/return envelopes and delta-only context |
 | `references/pmbok-mapping.md` | Traceability to PMBOK 8th, the Agile Practice Guide, and PMI's AI standard |
 | `scripts/complexity_score.py` | Deterministic complexity scorer |
+| `scripts/validate_worker_output.py` | Validates the structured Dev/QC report envelope before Lead accepts a phase |
 | `scripts/lint_config.py` | Fails the build when a value is restated outside the YAML, or the changelog drifts from the config |
 | `scripts/retro_report.py` | Aggregates `decisions.jsonl` across tasks — escalation rate, allowlist amendments, requirement-gap change requests, upward re-scores |
 | `CHANGELOG.md` | Version history for `agents-models.yaml` |
@@ -150,6 +151,6 @@ See [`references/agents-models.yaml`](references/agents-models.yaml) →
 
 ## Status
 
-Config `schema_version: 3`, `config_version: 25` — see [`CHANGELOG.md`](CHANGELOG.md)
+Config `schema_version: 5`, `config_version: 27` — see [`CHANGELOG.md`](CHANGELOG.md)
 for the version history, and [`REVIEW.md`](REVIEW.md) /
 [`REVIEW-workflows.md`](REVIEW-workflows.md) for the design review findings behind it.

@@ -156,6 +156,13 @@ not printed as the user-facing launch receipt:
 
 ## Return
 
+Dev and QC persist the return envelope in their role artifact as exactly one fenced
+`json` block (or as raw JSON when the artifact itself is JSON). The persisted object
+must match the payload sent with `worker_done`. This gives
+`orchestration.machine_acceptance.validator` a deterministic input; a prose summary
+alone is not machine-acceptable. QC also includes its `verdict` from the vocabulary in
+`skills/orca-qc/SKILL.md`.
+
 ```json
 {
   "task_id": "TASK-0142",

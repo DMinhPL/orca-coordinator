@@ -301,6 +301,12 @@ Expect this boundary to feel wrong in the moment — checking it yourself is alw
 faster than another dispatch. That is exactly why it is a prohibition and not a
 preference.
 
+For Dev and QC, first run `orchestration.machine_acceptance.validator` against the
+role artifact. Exit `1` rejects the report and triggers a fresh dispatch of the same
+role with the findings; exit `2` is a coordinator/tooling blocker. Lead must not edit
+an invalid artifact into compliance. A passing validator only opens the report for
+the consistency checks below; it is not a correctness or QC verdict.
+
 Read the return envelope against the contract you issued. The questions, in order:
 
 1. Are there `allowlist_violations`? Non-empty is a finding regardless of code quality.

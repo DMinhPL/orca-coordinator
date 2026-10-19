@@ -130,6 +130,29 @@ Rules:
 The two short receipts expose status, not the full contract: launch → ready → the
 return envelope at `worker_done`.
 
+### 1.3c Machine acceptance gate
+
+For Dev and QC, `worker_done` settles execution but does not by itself make the
+report acceptable. Before Lead reads or accepts the role conclusion, run the
+validator configured by `orchestration.machine_acceptance` against the role's report
+artifact.
+
+```text
+worker_done -> validate report artifact -> accept and arbitrate | reject and redispatch
+```
+
+- Exit `0`: the machine-checkable reporting floor is met; continue to Lead's normal
+  consistency review.
+- Exit `1`: reject the report and re-dispatch the same role with the validator
+  findings. Do not rewrite the artifact in Lead and do not reinterpret an invalid QC
+  report as a verdict.
+- Exit `2`: the validator could not read or parse its input. Treat this as a
+  coordinator/tooling blocker, not a specialist defect; resolve the artifact path or
+  report the blocker.
+
+This gate validates structure and evidence claims only. It never proves correctness,
+never replaces QC, and never authorizes Lead to perform specialist work.
+
 ## 1.4 Mandatory coordinator wait loop
 
 `dispatch_lifecycle.wait_loop`. After dispatching any supervised worker, keep the

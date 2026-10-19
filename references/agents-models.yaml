@@ -1,5 +1,5 @@
-schema_version: 4
-config_version: 26
+schema_version: 5
+config_version: 27
 
 # Central provider/model/effort configuration for the four-agent Orca workflow.
 # Per-task user overrides take precedence over these defaults.
@@ -1276,6 +1276,31 @@ orchestration:
     optional_fields:
       - band_challenge # see complexity_assessment.band_challenge
     status_values: [complete, partial, blocked, escalated]
+    artifact_embedding:
+      required_for: [dev, qc]
+      format: exactly_one_json_object_in_a_fenced_json_block_or_raw_json
+      source_of_truth: artifact_copy_must_match_worker_done_payload
+    role_required_fields:
+      qc: [verdict]
+  machine_acceptance:
+    enabled: true
+    roles: [dev, qc]
+    validator: scripts/validate_worker_output.py
+    run_by: lead
+    run_at: after_worker_done_before_report_acceptance
+    input: role_report_artifact
+    exit_codes: { valid: 0, invalid_report: 1, usage_or_read_error: 2 }
+    checks:
+      - structured_return_envelope_schema
+      - role_and_status_vocabulary
+      - satisfied_criteria_have_named_evidence
+      - complete_has_no_unresolved_criteria_or_allowlist_violations
+      - testing_claims_have_nearby_evidence
+      - qc_approval_has_complete_status_and_evidence
+      - boundary_matrix_has_no_blank_cells_when_present
+    does_not_prove: [implementation_correctness, requirement_correctness, qc_verdict]
+    on_invalid: reject_report_and_redispatch_same_role_with_validator_findings
+    on_usage_or_read_error: stop_and_report_coordinator_blocker
   cleanup:
     release_worker_after_verified_worker_done: true
     report_unreleased_terminal_handle: true

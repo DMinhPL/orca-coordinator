@@ -14,6 +14,26 @@ Legend: `+` added · `~` changed · `-` removed
 
 ---
 
+## v27 — machine acceptance for Dev/QC reports
+
+`schema_version: 5`
+
+- `+ orchestration.machine_acceptance` — Lead validates Dev and QC role artifacts
+  after `worker_done` and before accepting the phase. Invalid reports are rejected
+  and re-dispatched to the same role; read/parse failures are coordinator blockers.
+- `+ orchestration.return_envelope.artifact_embedding` and
+  `role_required_fields.qc` — Dev/QC artifacts carry exactly one structured JSON
+  return envelope, and QC includes its verdict.
+- `+ scripts/validate_worker_output.py` — validates required fields and types,
+  role/status vocabulary, criterion evidence, complete-status consistency,
+  allowlist compliance, evidence-backed testing claims, QC approval preconditions,
+  and boundary-matrix completeness when a matrix is present.
+- `~ schema_version` `4` -> `5` and `~ config_version` `26` -> `27` because
+  report consumers must handle the new embedded envelope and machine-acceptance
+  block.
+
+---
+
 ## v26 — high effort is the final escalation step
 
 `schema_version: 4`

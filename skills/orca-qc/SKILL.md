@@ -242,7 +242,14 @@ during construction, which is normal and far cheaper to act on now than after me
 
 ## Output
 
-`qc/verification.md` plus the return envelope. Then stop and wait for Lead —
+`qc/verification.md` plus the return envelope. End the artifact with exactly one
+fenced `json` block containing the same payload sent with `worker_done`. Include the
+common fields from `orchestration.return_envelope.required_fields` and the QC-only
+`verdict` field. Satisfied criteria name their evidence; empty lists remain explicit;
+placeholders such as `TBD` are invalid. Lead runs
+`orchestration.machine_acceptance.validator` before accepting the verdict.
+
+Then stop and wait for Lead —
 `must_wait_for_lead_after_failure: true`, and revalidation requires a fresh dispatch.
 
 ## Mode-specific notes

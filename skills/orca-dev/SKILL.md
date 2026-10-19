@@ -304,5 +304,11 @@ requires them: root-cause statements and compatibility claims.
 files_changed, **allowlist_violations (should be empty)**, evidence_levels,
 open_questions, recommended_next_action.
 
+End `dev/development.md` with exactly one fenced `json` block containing that return
+envelope. It must be the same payload sent with `worker_done`; satisfied criteria
+name their evidence, empty lists remain explicit, and placeholders such as `TBD` are
+invalid. Lead runs `orchestration.machine_acceptance.validator` on this artifact
+before accepting the phase.
+
 Then hand back to Lead. Not to QC — `communication.deny` blocks that, and the reason
 is that QC must receive the diff and the criteria without your reasoning attached.

@@ -98,6 +98,7 @@ with each other, that is reported to Lead rather than resolved by file order. Se
 - `references/handoff-protocol.md` — dispatch and return envelopes, delta-only context
 - `references/pmbok-mapping.md` — traceability to PMBOK 8th, the Agile Practice Guide, and PMI's AI standard
 - `scripts/complexity_score.py` — deterministic scorer
+- `scripts/validate_worker_output.py` — machine acceptance gate for Dev/QC reports
 - `scripts/lint_config.py` — fails the build when a value is restated outside the YAML
 - `REVIEW.md` — findings on config v12 and what changed in v13
 
