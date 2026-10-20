@@ -258,6 +258,19 @@ Two envelope fields carry disproportionate weight:
   because escalating feels like failing; naming the conditions in advance reframes it
   as following the protocol.
 
+Tag every `worker-start` with `orchestration.dispatch_tag` — one line, passed as
+`--comment` and as the first line of the task spec, plus `--retry-of` when the
+dispatch repeats an earlier one:
+
+```
+orca-tag role=dev band=XS mode=xs_self_check reason=report_correction
+```
+
+Pick the reason honestly. `report_correction` and `relaunch` are the dispatches that
+produced no new work; the batch retrospective counts them to find gates that cost
+more than they buy. A mislabelled retry hides exactly the ceremony it was meant to
+expose.
+
 Keep the full dispatch envelope internal. Print only the short launch receipt
 (`workflows.md` § 1.3a) when `worker-start` is verified. Then wait for the worker's
 first output — the `ROLE BOOTSTRAP ACK` block required by `handoff-protocol.md` —
@@ -316,8 +329,9 @@ Expect this boundary to feel wrong in the moment — checking it yourself is alw
 faster than another dispatch. That is exactly why it is a prohibition and not a
 preference.
 
-For Dev and QC, first run `orchestration.machine_acceptance.validator` against the
-`worker_done` payload or Orca-managed runtime copy. Exit `1` rejects the report and triggers a fresh dispatch of the same
+For Dev and QC, worker preflight never satisfies Lead's acceptance gate: first run
+`orchestration.machine_acceptance.validator` against
+the unchanged `worker_done` payload or Orca-managed runtime copy. Exit `1` rejects the report and triggers a fresh dispatch of the same
 role with the findings; exit `2` is a coordinator/tooling blocker. Lead must not edit
 an invalid payload into compliance. A passing validator only opens the report for
 the consistency checks below; it is not a correctness or QC verdict.

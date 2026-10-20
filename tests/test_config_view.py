@@ -20,6 +20,8 @@ class ConfigViewTests(unittest.TestCase):
         )
         self.assertIn("# --- agents.dev ---", result.stdout)
         self.assertIn("# --- workflow_modes.xs_self_check ---", result.stdout)
+        self.assertIn("# --- orchestration.machine_acceptance ---", result.stdout)
+        self.assertIn("worker_preflight:", result.stdout)
         self.assertNotIn("# --- agents.lead ---", result.stdout)
         self.assertLess(
             len(result.stdout),
@@ -67,6 +69,15 @@ class DocumentationEconomyTests(unittest.TestCase):
         runtime = self.config["orchestration"]["runtime_artifacts"]
         self.assertEqual("forbidden", runtime["persist_inside_project_repository"])
         self.assertIn("**/dispatch.json", runtime["forbidden_repo_artifacts"])
+
+    def test_worker_preflight_does_not_replace_lead_acceptance(self):
+        acceptance = self.config["orchestration"]["machine_acceptance"]
+        preflight = acceptance["worker_preflight"]
+        self.assertEqual(["dev", "qc"], preflight["required_for"])
+        self.assertEqual("worker_done", preflight["before"])
+        self.assertEqual("os_temp_report_path_outside_repository", preflight["transport"])
+        self.assertEqual("required_on_same_payload", preflight["lead_revalidation"])
+        self.assertEqual("lead", acceptance["run_by"])
 
     def test_decision_log_excludes_normal_events(self):
         decision_log = self.config["documentation"]["decision_log"]

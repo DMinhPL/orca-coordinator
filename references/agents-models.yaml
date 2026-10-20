@@ -1,5 +1,5 @@
-schema_version: 8
-config_version: 30
+schema_version: 10
+config_version: 32
 
 # Central provider/model/effort configuration for the four-agent Orca workflow.
 # Per-task user overrides take precedence over these defaults.
@@ -1293,6 +1293,20 @@ orchestration:
       ready_fields: [role, loaded_resource_count, one_sentence_mission]
       format: short_labeled_lines_without_table
       show_additional_fields_only_when: [user_requests_details, dispatch_failure_requires_context]
+  # Process-cost telemetry for retrospective.process_cost. Orca records when each
+  # Dispatch ran but not which role it served or why it exists, so Lead writes that.
+  dispatch_tag:
+    required_on: every_worker_start
+    pass_via:
+      - worker_start_comment # worker-start --comment
+      - first_line_of_task_spec # readable back through task-list
+    format: 'orca-tag role=<role> band=<band> mode=<workflow_mode> reason=<reason>'
+    reasons: [initial, rework, escalation, report_correction, relaunch]
+    # Ceremony = a dispatch that produced no new work product. report_correction
+    # points at the machine acceptance / worker_done gates; relaunch at the launch
+    # and bootstrap-ACK gates.
+    ceremony_reasons: [report_correction, relaunch]
+    on_retry_also_pass: worker_start_retry_of # --retry-of <dispatch_id>
   return_envelope:
     required_fields:
       - task_id
@@ -1322,6 +1336,13 @@ orchestration:
   machine_acceptance:
     enabled: true
     roles: [dev, qc]
+    worker_preflight:
+      required_for: [dev, qc]
+      before: worker_done
+      transport: os_temp_report_path_outside_repository
+      lead_revalidation: required_on_same_payload
+      on_invalid: correct_structure_or_report_honest_incomplete_status_then_rerun
+      never: fabricate_evidence_or_upgrade_work_status_to_make_validation_pass
     validator: scripts/validate_worker_output.py
     run_by: lead
     run_at: after_worker_done_before_report_acceptance
@@ -1614,6 +1635,7 @@ retrospective:
       - where_change_requests_originate
       - whether_qc_independence_held
       - cost_share_by_band
+      - process_cost_by_mode # see process_cost below
       # A target to measure against, not a rule to enforce. Most ordinary
       # engineering work should never reach sol. Persistent drift upward means the
       # default is wrong or the escalation conditions are too loose.
@@ -1621,6 +1643,25 @@ retrospective:
           luna: [0.60, 0.70]
           terra: [0.20, 0.30]
           sol: [0.05, 0.10]
+  # Measures the pod, not the product: what each mode costs in dispatches, minutes
+  # and retries, so a gate that buys no quality can be found and cut.
+  process_cost:
+    source: orca_runtime_read_only # scripts/retro_report.py --orca-runs
+    # Orca does not expose token counts. These are the proxies it does expose.
+    token_counts: not_exposed_by_orca
+    proxies: [dispatches, worker_minutes, wall_minutes, model_tier]
+    metrics_by_mode:
+      - runs
+      - dispatches_per_run
+      - worker_minutes_per_run
+      - wall_minutes_per_run
+      - repeat_dispatches # same task and role dispatched more than once in one run
+      - ceremony_dispatch_share # orchestration.dispatch_tag.ceremony_reasons
+      - ceremony_minute_share
+    untagged_dispatches: inferred_from_title_and_spec_and_reported_as_inferred
+    flag_when:
+      ceremony_dispatch_share_above: 0.20
+      xs_self_check_dispatches_per_run_above: 1.0
 
 # ─────────────────────────────────────────────────────────────
 # Dispatch lifecycle — distinct from the report status in return_envelope.

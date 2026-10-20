@@ -319,17 +319,12 @@ longer genuinely XS.
 
 ## What you produce
 
-Always send the return envelope from
-`orchestration.return_envelope.required_fields`: workflow_mode, status, criteria_status,
-files_changed, **allowlist_violations (should be empty)**, evidence_levels,
-open_questions, recommended_next_action. In `xs_self_check`, also include the
-required `self_revalidation` object.
-
-Lead validates the `worker_done` payload directly. Do not persist a Dev report by
-default. XS creates no durable task document; for every other band, Lead extracts only
-the feature result needed by the consolidated `summary.md`.
-Satisfied criteria name their evidence, empty lists remain explicit, and placeholders
-such as `TBD` are invalid.
+Build the return envelope from the normative schema and role additions in
+`orchestration.return_envelope`, then follow `handoff-protocol.md` § Return. Run the
+configured worker preflight on an OS-temporary report path before sending that path
+unchanged in `worker_done`; this catches malformed reporting but never authorizes you
+to invent evidence or upgrade the work status. Lead revalidates the same payload.
+Do not persist a Dev report by default; band documentation remains Lead-owned.
 
 Then hand back to Lead. Not to QC — `communication.deny` blocks that, and the reason
 is that QC must receive the diff and the criteria without your reasoning attached.

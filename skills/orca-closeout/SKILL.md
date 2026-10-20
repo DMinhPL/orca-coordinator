@@ -165,3 +165,13 @@ Never create task documents solely to feed retrospective metrics.
   one most worth defending.
 - **Cost share by band.** If XS and S tasks consume a disproportionate share, the mode
   downgrade rule or the defaults are wrong.
+- **What does the process itself cost?** Run
+  `python scripts/retro_report.py --orca-runs` (read-only) and read
+  `retrospective.process_cost` by mode: dispatches, worker minutes, repeats, and
+  ceremony dispatches — the `report_correction` and `relaunch` retries that produced
+  no new work. A flagged mode names a gate to simplify: report corrections point at
+  the report contract or machine acceptance, relaunches at launch and bootstrap ACK.
+  Cut ceremony, never a quality control: QC independence and the Dev dispatch are
+  not on the table. Orca exposes no token counts, so these are proxies; a high
+  share of untagged (inferred) dispatches means Lead is skipping
+  `orchestration.dispatch_tag`, and the numbers deserve less trust.

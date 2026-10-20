@@ -243,12 +243,12 @@ during construction, which is normal and far cheaper to act on now than after me
 
 ## Output
 
-Always send the return envelope in `worker_done`. Include the
-common fields from `orchestration.return_envelope.required_fields` and the QC-only
-`verdict` field. Satisfied criteria name their evidence; empty lists remain explicit;
-placeholders such as `TBD` are invalid. Lead validates the payload before accepting
-the verdict. Do not persist a QC report by default. Lead extracts the useful
-verification result into the single feature `summary.md` for bands S and above.
+Build the return envelope from the normative schema and QC addition in
+`orchestration.return_envelope`, then follow `handoff-protocol.md` § Return. Run the
+configured worker preflight on an OS-temporary report path before sending that path
+unchanged in `worker_done`; never change evidence or soften the verdict merely to
+pass validation. Lead revalidates the same payload before accepting the verdict.
+Do not persist a QC report by default; band documentation remains Lead-owned.
 
 Then stop and wait for Lead —
 `must_wait_for_lead_after_failure: true`, and revalidation requires a fresh dispatch.

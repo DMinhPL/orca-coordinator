@@ -14,6 +14,41 @@ Legend: `+` added · `~` changed · `-` removed
 
 ---
 
+## v32 — report preflight and task-scoped repeat metrics
+
+`schema_version: 10`
+
+- `+ orchestration.machine_acceptance.worker_preflight` — Dev/QC validate an
+  OS-temporary report before sending it by `--report-path`; Lead still validates the
+  unchanged payload and remains the acceptance authority.
+- `~ retrospective.process_cost.repeat_dispatches` — counts repeated role dispatches
+  within the same Task, so separate Tasks in one Run are no longer mislabeled as
+  retries.
+- `-` duplicated return-field lists in Dev/QC skills; the YAML schema and handoff
+  protocol remain the normative sources.
+- `~ schema_version` `9` -> `10` and `~ config_version` `31` -> `32` for the worker
+  preflight contract.
+
+---
+
+## v31 — process-cost telemetry
+
+`schema_version: 9`
+
+- `+ orchestration.dispatch_tag` — Lead tags every `worker-start` with
+  `orca-tag role= band= mode= reason=` via `--comment` and the first spec line, plus
+  `--retry-of` on retries. `report_correction` and `relaunch` are ceremony reasons.
+- `+ retrospective.process_cost` — dispatches, worker/wall minutes, repeats, and
+  ceremony share per workflow mode, with flag thresholds. Orca exposes no token
+  counts; these are the proxies. Untagged dispatches are inferred and reported as such.
+- `~ retrospective.batch.review` `+ process_cost_by_mode`.
+- `scripts/retro_report.py` `+ --orca-runs`, `--orca-limit`, `--orca-save`, `--orca-json`
+  (read-only Orca collection; vocabulary and thresholds read from this file).
+- `~ schema_version` `8` -> `9` and `~ config_version` `30` -> `31`: Lead must now
+  tag every dispatch.
+
+---
+
 ## v30 — one outcome-first feature document
 
 `schema_version: 8`

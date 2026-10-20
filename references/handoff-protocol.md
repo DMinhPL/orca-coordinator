@@ -158,8 +158,13 @@ not printed as the user-facing launch receipt:
 ## Return
 
 Dev and QC send the return envelope in `worker_done` as exactly one JSON object. Lead
-validates that payload directly, or an Orca-managed runtime copy of it; no repository
-file is required merely to feed the validator. No role artifact is persisted by
+validates the exact submitted payload, or an Orca-managed runtime copy of it. The
+injected preamble supplies the resolved validator command; before sending, the worker
+writes the object to an OS-temporary path outside the repository and runs that command
+with its role. Exit `1` means
+correct the report structure or report the work honestly as incomplete, then rerun;
+never invent evidence or upgrade status. Exit `2` is a tooling blocker. A passing
+preflight does not replace Lead's acceptance gate. No role artifact is persisted by
 default. XS persists no task document; every other band is condensed by Lead into one
 outcome-first `summary.md`. QC includes its `verdict` from the vocabulary in
 `skills/orca-qc/SKILL.md`.
@@ -253,8 +258,9 @@ dispatch envelope, not the conversation, not a previous task.
 
 1. **Copy the `worker_done` command from the preamble verbatim.** Keep its
    executable, worker handle, dispatch capability, Task ID and Dispatch ID exactly as
-   given. Never retype, shorten, or recall an ID from memory. Change only
-   `--subject`, `--body` and `--outcome`.
+   given. Never retype, shorten, or recall an ID from memory. The injected command
+   uses `--report-path`; point it at the unchanged, preflighted temporary report and
+   change only the permitted subject/outcome values.
 2. **Rejected for an ID mismatch** (the report was never accepted): copy the
    command from the preamble again and resend **exactly once**. A second rejection
    goes to Lead as a blocker; do not keep trying variations.
