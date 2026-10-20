@@ -1,5 +1,5 @@
-schema_version: 10
-config_version: 32
+schema_version: 11
+config_version: 33
 
 # Central provider/model/effort configuration for the four-agent Orca workflow.
 # Per-task user overrides take precedence over these defaults.
@@ -514,10 +514,19 @@ modification_policy:
   # M2, because M0 and M1 do not write.
   branch_naming:
     required_from_tier: M2
-    decided_by: lead
-    decided_at: classification
+    proposed_by: lead
+    proposed_at: classification
+    # Whether a new branch is created at all is the user's answer to the question
+    # every task starts with (worktree_selection_policy.task_start_branch_question).
+    confirmed_by: user
+    confirmed_in: worktree_selection_policy.task_start_branch_question
     created_by: dev
-    created_when: at_start_of_the_m2_plus_dispatch_using_the_name_lead_put_in_the_envelope
+    created_when: at_start_of_the_m2_plus_dispatch_using_the_name_confirmed_in_the_envelope
+    # When the user keeps the current branch, that branch is the work branch the
+    # tiers require: the envelope names it with create_branch false. Commits to it
+    # still need G7, and forbid_direct_commit_to still blocks commits on main.
+    user_may_keep_current_branch: true
+    envelope_fields: [work_branch, create_branch]
     pattern: '{category}/{slug}'
     pattern_with_ticket: '{category}/{slug}-{ticket}'
     categories:
@@ -1466,6 +1475,27 @@ primary_session_policy:
 # reuses clean capacity before creating another worktree.
 worktree_selection_policy:
   applies_before: [ba_dispatch, dev_dispatch, qc_dispatch]
+  # Every task starts here: before its first dispatch of any kind, Lead asks whether
+  # to create a new branch. Never inferred, never carried over from another task.
+  task_start_branch_question:
+    asked_by: lead
+    asked_after: classification_and_scoring # the proposed name needs the task type
+    asked_before: first_dispatch_of_the_task
+    asked_once_per_task: true
+    choices: [create_lead_proposed_branch, create_user_named_branch, keep_current_branch]
+    must_state:
+      - current_branch_and_dirty_state
+      - proposed_branch_name
+      - lead_recommendation_with_reason # e.g. new branch for structural or baseline work
+      - that_the_answer_applies_to_this_task_only
+    # Any worktree choice this policy already requires the user to make (Primary
+    # opt-in, empty pool, several candidates) goes in the same question.
+    fold_in_worktree_choice_when_required: true
+    answer_already_given_in_request_counts: true # e.g. "work on main, no new branch"
+    never_inferred_from: [silence, past_approval_on_another_task, task_simplicity, single_worktree_convenience_alone]
+    on_unanswered: no_dispatch
+    # A resumed Lead reads it from Orca, never from chat history (coordinator_resume).
+    record_in: orca_run_objective
   pool_target_size: 3
   # Primary can be offered as a candidate only through an explicit per-task opt-in —
   # never inferred from silence, a prior answer, or task simplicity alone.

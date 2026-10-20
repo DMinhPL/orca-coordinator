@@ -76,6 +76,7 @@ blocker to report, not a reason to improvise.
  1  CLASSIFY      type from engineering_policy.task_classification.types
  2  SCORE         complexity_assessment — overrides, then triage, at DEFAULT effort
  3  SELECT        workflow_mode + complexity_profile from the band
+ 3b BRANCH        ask the user: create a new branch, or stay on the current one?
  4  GRANT         modification_tier + file_allowlist (BA proposes, Lead grants)
  5  GATE          raise G1/G2 if the band or tier demands it
  6  DISPATCH      one fresh worker per phase, with a complete envelope
@@ -189,6 +190,33 @@ Note the mode shapes:
   behavior or root cause before Dev implements a fix.
 - **`research_only`** / **`qc_only`** — tier M0, no writes.
 
+### 3b. Branch — ask before anything is dispatched
+
+`worktree_selection_policy.task_start_branch_question`. Every task starts with this
+question, before its first dispatch of any kind — a read-only BA included. Whether
+the work gets a new branch is the user's call, never inferred: not from silence, an
+earlier task's answer, or a task looking small.
+
+State the current branch and whether it is dirty, the branch you propose (step 4's
+naming rule), your recommendation with its reason, and that the answer applies to
+this task only. If the worktree policy already needs a choice from the user —
+Primary opt-in, an empty pool, several candidates (`workflows.md` § 1.9) — put it in
+the same question rather than asking twice.
+
+```
+Before I start:
+  Branch    you are on main (clean)
+            → create update/split-admin-client-components, another name, or stay on main?
+  Worktree  only Primary exists → use Primary for this task, or name a new worktree?
+  Recommendation: a new branch — this moves files across the tree (M3)
+```
+
+- **An answer already in the request counts** ("work on main, no new branch"). Don't
+  ask it again.
+- **No answer, no dispatch.**
+- **Record the answer in the Run objective** when you create the Run, so a resumed
+  Lead reads it from Orca instead of asking again or guessing.
+
 ### 4. Grant the modification tier
 
 This is the step most easily skipped and the one that prevents the most damage. Write
@@ -201,19 +229,23 @@ kind of change permitted ("modify — register provider only" constrains far mor
 "modify"). BA proposes the allowlist from its blast-radius analysis; Lead grants it.
 Dev editing outside it is forbidden and routes back here as a change request.
 
-M2 also means a **work branch**, and you name it — `modification_policy.branch_naming`,
+M2 also means a **work branch**, and you propose it — `modification_policy.branch_naming`,
 `{category}/{slug}[-{ticket}]`. The category is not a free choice: `category_by_task_type`
 maps it from the type you assigned at step 1, so the branch cannot disagree with the
 classification. Override it only with a recorded reason. Include the ticket suffix only
-when an id actually appears in the request or requirement — never invent one. Put the
-branch name in the dispatch envelope; a worker that has to guess it will guess wrong.
-You decide the name; **Dev creates the branch**, at the start of its dispatch — you
-never run `git checkout -b` yourself.
+when an id actually appears in the request or requirement — never invent one. The
+user already answered whether it is created (step 3b). Put `work_branch` and
+`create_branch` in the dispatch envelope: the confirmed new name with `create_branch:
+true`, or the kept current branch with `create_branch: false` — the kept branch is
+then the work branch the tier requires. A worker that has to guess it will guess
+wrong. **Dev creates the branch**, at the start of its dispatch — you never run
+`git checkout -b` yourself.
 
 When this task creates a new worktree, complete
 `worktree_selection_policy.new_worktree_bootstrap` before its first worker launch.
-Load that policy only when selecting a repo-backed workspace with
-`python scripts/config_view.py --path worktree_selection_policy`.
+Your role view carries only the parts that shape the step 3b question; load the
+full policy with `python scripts/config_view.py --path worktree_selection_policy`
+when you run the inventory or create a worktree.
 The source is the verified Primary worktree, and the copied GitNexus/Knowns state is
 an independent snapshot, never shared live state. Do not treat a copied GitNexus
 database as ready: refresh it from the new worktree root, verify freshness, and use
@@ -239,8 +271,8 @@ because the commit was declined.
 acceptance — the same as every other human gate — but you do not run `git
 commit`, `git push`, or `git checkout -b` yourself. **Dev** runs the accepted
 commit/push, and **Dev** creates the work branch at the start of the M2+
-dispatch, using the name you decided at classification and put in the envelope.
-You name the branch; Dev creates it. Long gate requests get skimmed, and a skimmed gate is not a gate.
+dispatch, using the name the user confirmed and you put in the envelope.
+You propose the branch; Dev creates it. Long gate requests get skimmed, and a skimmed gate is not a gate.
 
 ### 6. Dispatch
 

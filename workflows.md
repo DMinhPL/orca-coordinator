@@ -272,6 +272,12 @@ prefer reuse. `primary_session_policy` already grants worktree reuse; this gate 
 the mandatory inventory step that makes reuse the default instead of an option Lead
 has to remember.
 
+This gate runs as part of the question every task starts with
+(`task_start_branch_question`, Lead skill step 3b): before the first dispatch of any
+kind, Lead asks whether to create a new branch, and folds in any worktree choice the
+steps below require — Primary opt-in, a name for a new worktree, or which candidate
+to use. One question, not one per step. No answer, no dispatch.
+
 1. List registered worktrees with a read-only Git command. Exclude Primary from the
    candidate pool by default — it stays on its coordinator branch unless the user
    explicitly opts in for this task. Only raise that option when the pool would

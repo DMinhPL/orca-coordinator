@@ -41,6 +41,10 @@ ROLE_PATHS = {
         "primary_session_policy",
         "dispatch_lifecycle",
         "lead_authority_boundary",
+        # The full worktree policy loads with --path when a workspace is selected;
+        # these two decide what Lead asks before the task's first dispatch.
+        "worktree_selection_policy.task_start_branch_question",
+        "worktree_selection_policy.primary_excluded_from_pool",
     ],
     "ba": [
         "agents.ba",

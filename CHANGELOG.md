@@ -14,6 +14,32 @@ Legend: `+` added · `~` changed · `-` removed
 
 ---
 
+## v33 — every task starts by asking about the branch
+
+`schema_version: 11`
+
+- `+ worktree_selection_policy.task_start_branch_question` — after classification and
+  scoring, before the task's first dispatch of any kind, Lead asks the user whether to
+  create the proposed branch, another name, or stay on the current branch. Lead states
+  the current branch and dirty state, the proposed name, and its recommendation with a
+  reason. Any worktree choice the policy already requires (Primary opt-in, empty pool,
+  several candidates) is folded into the same question. An answer already in the
+  request counts; there is no dispatch without an answer. The answer is recorded in the
+  Run objective, so a resumed Lead reads it from Orca.
+- `~ modification_policy.branch_naming` — `decided_by`/`decided_at` replaced by
+  `proposed_by: lead`, `proposed_at`, `confirmed_by: user`, `confirmed_in`;
+  `+ user_may_keep_current_branch`; `+ envelope_fields: [work_branch, create_branch]`.
+  A kept branch is named as `work_branch` with `create_branch: false`, so it remains
+  the work branch tiers M2–M4 require. G7 and `forbid_direct_commit_to` are unchanged.
+- `~ scripts/config_view.py` — the Lead view now includes the question and the Primary
+  opt-in rule. Previously the worktree policy loaded only via `--path`, so a Lead not
+  creating a worktree never saw the opt-in rule and silently dispatched onto Primary.
+- `~ schema_version` `10` -> `11` and `~ config_version` `32` -> `33`: renamed
+  `branch_naming` keys and new envelope fields, and Lead must ask before the first
+  dispatch.
+
+---
+
 ## v32 — report preflight and task-scoped repeat metrics
 
 `schema_version: 10`

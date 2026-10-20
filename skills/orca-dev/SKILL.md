@@ -269,6 +269,9 @@ If you cannot write this honestly, the change is M4 and needs a human. Report th
 `modification_policy.branch_naming` names you as `created_by`: at the start of an
 M2+ dispatch, create the work branch yourself with the name Lead put in the
 envelope (`{category}/{slug}[-{ticket}]`) — do not wait for Lead to create it.
+If the envelope says `create_branch: false`, the user chose to stay on the current
+branch: verify you are on the `work_branch` it names, create nothing, check out
+nothing, and work where you are.
 
 `modification_policy.commit_and_push_authorization`, gate `G7_commit_push_approval`.
 Applying an M2+ edit to the working tree authorizes writing the files, nothing

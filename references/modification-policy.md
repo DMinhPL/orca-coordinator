@@ -92,9 +92,11 @@ ROLLBACK
 
 ## Branch naming
 
-`modification_policy.branch_naming`. Lead decides the name at classification, in the
-same breath as the task type — and a branch exists only from **M2**, because M0 and M1
-do not write.
+`modification_policy.branch_naming`. Lead proposes the name at classification, in the
+same breath as the task type, and the user decides whether it is created — new
+branch, another name, or stay on the current one — in the question every task starts
+with (`worktree_selection_policy.task_start_branch_question`). A branch exists only
+from **M2**, because M0 and M1 do not write.
 
 ```
 {category}/{slug}                 feat/auth-role-mechanism
@@ -184,10 +186,14 @@ five-part `request_format` as the other human gates. Once accepted, **Dev** runs
 the `git commit` / `git push` — Lead requests the approval but never runs a git
 write command itself.
 
-Branch creation follows the same split: Lead *names* the branch at
-classification (`branch_naming.decided_by: lead`), but **Dev creates it**, at the
-start of the M2+ dispatch, using the name Lead put in the envelope. Lead never
-runs `git checkout -b`.
+Branch creation follows the same split: Lead *proposes* the branch
+(`branch_naming.proposed_by: lead`) and the user confirms it
+(`branch_naming.confirmed_by: user`), but **Dev creates it**, at the start of the
+M2+ dispatch, using the confirmed name in the envelope. When the user keeps the
+current branch, the envelope names it as `work_branch` with `create_branch: false`:
+it is the work branch the tier requires, and no branch is created. Commits to it
+still need G7, and `forbid_direct_commit_to` still blocks commits on `main`.
+Lead never runs `git checkout -b`.
 
 **On rejection: keep the changes.** The working tree keeps the uncommitted edits,
 local only. Nothing is discarded, reset, or stashed away just because the commit

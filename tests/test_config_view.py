@@ -28,6 +28,18 @@ class ConfigViewTests(unittest.TestCase):
             len((ROOT / "references" / "agents-models.yaml").read_text(encoding="utf-8")),
         )
 
+    def test_lead_view_carries_the_task_start_branch_question(self):
+        result = subprocess.run(
+            [sys.executable, str(ROOT / "scripts" / "config_view.py"), "--role", "lead"],
+            cwd=ROOT,
+            capture_output=True,
+            text=True,
+            check=True,
+        )
+        self.assertIn("# --- worktree_selection_policy.task_start_branch_question ---", result.stdout)
+        self.assertIn("asked_before: first_dispatch_of_the_task", result.stdout)
+        self.assertNotIn("new_worktree_bootstrap:", result.stdout)
+
     def test_unknown_path_fails(self):
         result = subprocess.run(
             [sys.executable, str(ROOT / "scripts" / "config_view.py"), "--path", "missing.path"],

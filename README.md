@@ -286,7 +286,7 @@ the feature result, not to archive the process.
 
 ## Status
 
-Config `schema_version: 10`, `config_version: 32` — see [`CHANGELOG.md`](CHANGELOG.md)
+Config `schema_version: 11`, `config_version: 33` — see [`CHANGELOG.md`](CHANGELOG.md)
 for the version history, and [`REVIEW.md`](REVIEW.md) /
 [`REVIEW-workflows.md`](REVIEW-workflows.md) for the design review findings behind it.
-Last revalidated 2026-10-20: lint clean, 13/13 tests passing.
+Last revalidated 2026-10-20: lint clean, 14/14 tests passing.
