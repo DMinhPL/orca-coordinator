@@ -157,7 +157,7 @@ checklist.
 
 ### F-13 · P3 · No QC artifact and no decision log
 
-`documentation.files` has BA and Dev outputs only. QC produces findings with nowhere
+The former flat documentation list had BA and Dev outputs only. QC produced findings with nowhere
 to persist them. Separately, the config demands a recorded reason in five places
 (`escalate_with_recorded_reason`, `lead_selects_one_and_records_reason` ×3,
 `silent_material_assumptions: false`) with no file to record into.
@@ -255,8 +255,10 @@ already owns both responsibilities and neither verifies the other.
 4. **Adopt `complexity_assessment` in shadow mode for ~10 tasks.** Have Lead score and
    record, but keep choosing the mode as you do now. Compare. Then switch the band to
    drive `workflow_mode` once the bands match your judgement.
-5. **`documentation.files_by_band`** keeps XS tasks at one file. If your current
-   volume is mostly small tasks, verify that before turning on the full artifact set.
+5. **`documentation.files_by_band`** originally reduced XS to one file. The current
+   policy supersedes this: XS creates no durable document, while every other band
+   creates one outcome-first feature summary. Extra artifacts require an explicit
+   project, user, or compliance need.
 
 ## Two things I would still question
 

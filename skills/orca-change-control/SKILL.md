@@ -61,7 +61,9 @@ CR-01  allowlist_amendment  ·  TASK-0142  ·  raised by dev
   DECIDE   lead — approved
 ```
 
-One exchange, recorded in `decisions.jsonl`, allowlist updated, Dev resumes.
+One exchange, recorded in Orca runtime state. Copy it into the final `summary.md` only
+when it changes how a future maintainer should understand the feature. Then the
+allowlist is updated and Dev resumes.
 
 `promote_to_formal_when: exceeds_two_files_or_reveals_missed_requirement`. And note
 the meta-signal: two or three amendments on one task means BA's blast-radius analysis
@@ -92,14 +94,14 @@ Disposition is one of `approved` · `rejected` · `deferred` ·
 An approved change is not done when it is approved. Walk
 `change_control.propagation_checklist` in order:
 
-1. requirement document
-2. **traceability matrix** — skipping this is how a change ends up implemented but
+1. accepted requirement in runtime
+2. **runtime traceability** — skipping this is how a change ends up implemented but
    untraceable, which is indistinguishable from scope creep at the status gate
-3. risk section
+3. runtime risk record
 4. file allowlist
 5. definition of done
 6. budget
-7. decision log
+7. the band's material-decision destination, when this is not a simple clarification
 8. **reissue the dispatch envelope** — the worker is cold and holds no memory of the
    amendment
 

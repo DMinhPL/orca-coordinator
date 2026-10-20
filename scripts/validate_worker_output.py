@@ -1,13 +1,14 @@
 #!/usr/bin/env python3
-"""Machine acceptance gate for Dev and QC report artifacts.
+"""Machine acceptance gate for Dev and QC worker_done payloads.
 
-The validator checks the structured return envelope embedded in a report. It raises
-the reporting floor; it does not prove implementation correctness or replace QC.
+The validator checks the structured return envelope from runtime. It raises the
+reporting floor; it does not require a durable role report, prove implementation
+correctness, or replace QC.
 
 Usage:
-    python scripts/validate_worker_output.py --role dev dev/development.md
-    python scripts/validate_worker_output.py --role qc qc/verification.md
-    Get-Content report.md | python scripts/validate_worker_output.py --role dev -
+    Get-Content runtime-copy.json | python scripts/validate_worker_output.py --role dev -
+    python scripts/validate_worker_output.py --role dev runtime-copy.json
+    python scripts/validate_worker_output.py --role qc runtime-copy.json
 
 Exit codes: 0 = valid, 1 = invalid report, 2 = usage/read error.
 """

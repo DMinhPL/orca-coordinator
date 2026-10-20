@@ -134,20 +134,20 @@ return envelope at `worker_done`.
 
 For Dev and QC, `worker_done` settles execution but does not by itself make the
 report acceptable. Before Lead reads or accepts the role conclusion, run the
-validator configured by `orchestration.machine_acceptance` against the role's report
-artifact.
+validator configured by `orchestration.machine_acceptance` against the payload or an
+Orca-managed runtime copy.
 
 ```text
-worker_done -> validate report artifact -> accept and arbitrate | reject and redispatch
+worker_done -> validate payload -> accept and arbitrate | reject and redispatch
 ```
 
 - Exit `0`: the machine-checkable reporting floor is met; continue to Lead's normal
   consistency review.
 - Exit `1`: reject the report and re-dispatch the same role with the validator
-  findings. Do not rewrite the artifact in Lead and do not reinterpret an invalid QC
+  findings. Do not rewrite the payload in Lead and do not reinterpret an invalid QC
   report as a verdict.
 - Exit `2`: the validator could not read or parse its input. Treat this as a
-  coordinator/tooling blocker, not a specialist defect; resolve the artifact path or
+  coordinator/tooling blocker, not a specialist defect; resolve the runtime copy or
   report the blocker.
 
 For a Dev report in `xs_self_check`, machine acceptance additionally requires a
@@ -210,10 +210,9 @@ the moment. That is why it is written as a prohibition rather than a preference.
 
 ## 1.6 QC delta-only and single-attempt gate
 
-`qc_policy`. For every QC phase, Lead sends only: the current `git diff`, relevant
-sections of the requirement document, relevant sections of the development document,
-concise results for the changed behavior, the file allowlist, and the acceptance
-criteria.
+`qc_policy`. For every QC phase, Lead sends only: the current `git diff`, the accepted
+requirement and criteria, concise results for the changed behavior, and the file
+allowlist.
 
 QC must not rescan the full repository by default, and must not ingest full worker
 transcripts, large successful test logs, or Dev's implementation reasoning. That last
@@ -253,9 +252,17 @@ at the start of the M2+ dispatch.
 
 ## 1.8 Documentation gate
 
-`documentation`. Required artifacts exist and are current before final success.
-Document status follows `document_status.values` — draft, confirmed, implemented —
-and a document may not be marked implemented by the role that authored the change.
+`documentation`. Durable documentation records the feature result and must never
+duplicate Orca runtime state:
+
+- XS: no `.docs/features` folder and no durable task document.
+- S/M/L/XL: one concise `summary.md` owned by Lead, written after the work reaches an
+  outcome and focused on what changed, verification, and remaining limitations.
+
+`dispatch.json`, worker-state files, ACK receipts, and orchestration event logs are
+forbidden inside the project repository. Role reports, decision logs, and traceability
+exports are also not created automatically; keep them in runtime unless explicitly
+requested or required by project/compliance policy.
 
 ## 1.9 Worktree pool gate
 
@@ -395,8 +402,8 @@ change to a protected path is not a simple task whatever its size.
 
 Reaching XS instead selects `xs_self_check`; it does not enter `simple`.
 
-Lead may persist the user's already-confirmed requirement into the requirement
-document. Lead may **not** invent or derive new business rules in place of BA
+Lead may carry the user's already-confirmed requirement into the band-S summary.
+Lead may **not** invent or derive new business rules in place of BA
 (`workflow_modes.simple.ba_substitution`). The moment a new business rule is needed,
 switch to `standard` and dispatch BA. That is the boundary between an efficiency and
 a shadow BA.
@@ -429,16 +436,16 @@ analysis.
 Analysis, investigation, requirement clarification, architecture review, or
 documentation without code changes. Tier M0.
 
-The development document must state explicitly that implementation was not performed,
-and its status is capped at confirmed. Never implemented.
+If a final summary is created, state explicitly that implementation was not performed
+and report the useful analysis outcome. XS creates no document.
 
 ## qc_only
 
 Review or verification of existing changes without new implementation. Tier M0.
 
-If feature documentation exists, update it with the QC evidence. If it does not,
-create the minimal package with traceability and mark unverified items with evidence
-level `unknown` rather than leaving them silent.
+If a feature summary already exists, update its verification result. Otherwise every
+band from S upward gets the same one-file summary; XS produces only the runtime
+verdict. Mark unverified items `unknown` rather than leaving them silent.
 
 ## cross_branch_review
 

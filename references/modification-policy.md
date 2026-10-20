@@ -142,15 +142,16 @@ PROJ-123    →  -proj-123        (lowercased)
 ```
 
 If the requirement mentions several ids, use the one the work is *filed under* and
-record the others in the decision log. Do not chain them into the branch name.
+record the others in Orca runtime state and, when durable documentation applies, its
+material-decisions section. Do not chain them into the branch name.
 
 ### Note on traceability
 
 The branch no longer carries `{task_id}` — the previous pattern was
-`orca/{task_id}-{slug}`. Task traceability now lives entirely in the commit trailer
-(`[TASK-####]` below) and in `decisions.jsonl`. If you rely on branch names to find
-the task, that link moved; the ticket suffix is a *ticket* reference, not a task id,
-and the two are not interchangeable.
+`orca/{task_id}-{slug}`. Task traceability lives in Orca runtime state and the commit
+trailer (`[TASK-####]` below); the final feature summary provides a durable result
+link when present. The ticket suffix is a *ticket* reference, not a task id, and the
+two are not interchangeable.
 
 ## Commits
 

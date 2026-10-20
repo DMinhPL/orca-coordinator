@@ -243,12 +243,12 @@ during construction, which is normal and far cheaper to act on now than after me
 
 ## Output
 
-`qc/verification.md` plus the return envelope. End the artifact with exactly one
-fenced `json` block containing the same payload sent with `worker_done`. Include the
+Always send the return envelope in `worker_done`. Include the
 common fields from `orchestration.return_envelope.required_fields` and the QC-only
 `verdict` field. Satisfied criteria name their evidence; empty lists remain explicit;
-placeholders such as `TBD` are invalid. Lead runs
-`orchestration.machine_acceptance.validator` before accepting the verdict.
+placeholders such as `TBD` are invalid. Lead validates the payload before accepting
+the verdict. Do not persist a QC report by default. Lead extracts the useful
+verification result into the single feature `summary.md` for bands S and above.
 
 Then stop and wait for Lead —
 `must_wait_for_lead_after_failure: true`, and revalidation requires a fresh dispatch.
@@ -270,9 +270,9 @@ the user, not to you. The **second** dispatch, after Dev, is a normal verificati
 **`cross_branch_review`** — you run in a separate worktree on the target branch.
 Primary stays on its own branch. Do not check out the target branch anywhere else.
 
-**`qc_only`** — if feature documentation is absent, create the minimal package with
-traceability and mark unverified items with evidence level `unknown`. An unverified
-item recorded as unknown is useful; one left silent reads as verified.
+**`qc_only`** — follow the same documentation policy: XS runtime-only, every other
+band one outcome-first summary. Mark unverified items with evidence level `unknown`;
+one left silent reads as verified.
 
 ## Your authority is exclusive
 

@@ -33,8 +33,8 @@ descriptive; the normative values (bands, tiers, gate conditions) live in
 - **Triage triple** — d2, d3, d7: the three CAS dimensions carrying the safety signal,
   scored first under progressive scoring. See `complexity-model.md`.
 - **Fast path** — when the triage triple is all zero and no hard override matched, the
-  task is banded XS without scoring d1/d4/d5/d6. Recorded as `fast-path` in the
-  decision log so it stays auditable.
+  task is banded XS without scoring d1/d4/d5/d6. Recorded as `fast-path` in Orca
+  runtime state so it stays auditable without creating a project document.
 - **XS / S / M / L / XL** — the five complexity bands the CAS total maps to, from a
   four-sentence trivial change (XS) to a task that must be decomposed before it can
   run at all (XL). See `complexity-model.md`.
@@ -61,8 +61,8 @@ descriptive; the normative values (bands, tiers, gate conditions) live in
   - **G6** release — merging to a protected branch, or high release risk, before the
     final report
   See `agents-models.yaml` → `human_gates`.
-- **AC** — Acceptance Criterion. Referenced by ID (e.g. `AC-01`), never by prose, so
-  the requirement document stays the single authoritative statement.
+- **AC** — Acceptance Criterion. Referenced by ID (e.g. `AC-01`) so runtime evidence
+  and the final feature summary can point to the same accepted outcome.
 - **Allowlist** — the set of files a Dev dispatch may write, proposed by BA from
   blast-radius analysis and granted by Lead in the dispatch envelope. Required from
   M2 upward.
@@ -86,8 +86,8 @@ descriptive; the normative values (bands, tiers, gate conditions) live in
   escalation conditions. See `handoff-protocol.md`.
 - **Return envelope** (`worker_done`) — the structured report a worker sends back:
   status, criteria status, files changed, evidence levels, open questions.
-- **Delta-only context** — QC receives only the diff, relevant requirement/dev
-  document sections, and acceptance criteria — never Dev's implementation reasoning
+- **Delta-only context** — QC receives only the diff, accepted requirements and
+  acceptance criteria — never Dev's implementation reasoning
   or full transcript. The mechanism that keeps verification independent.
 - **Rework loop** — the cycle when QC returns Fail/Blocked: Lead classifies the
   finding (technical fix, requirement gap, business decision, or invalid), routes it,
@@ -127,8 +127,8 @@ descriptive; the normative values (bands, tiers, gate conditions) live in
   `SKILL.md`'s hub-and-spoke diagram).
 - **WBS** — Work Breakdown Structure. Referenced in the PMBOK mapping for how P3
   planning decomposes scope into tasks.
-- **RTM** — Requirements Traceability Matrix. The `traceability.csv` artifact that
-  links acceptance criteria to tests and changed files.
+- **RTM** — Requirements Traceability Matrix. Runtime data linking acceptance
+  criteria to tests and changed files; exported only when explicitly required.
 
 ## See also
 

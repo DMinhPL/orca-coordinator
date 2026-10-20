@@ -80,7 +80,7 @@ blocker to report, not a reason to improvise.
  5  GATE          raise G1/G2 if the band or tier demands it
  6  DISPATCH      one fresh worker per phase, with a complete envelope
  7  ARBITRATE     read the return envelope; escalate, re-dispatch, or advance
- 8  DOCUMENT      decisions.jsonl on every judgement call
+ 8  DOCUMENT      band-scaled durable docs; exception decisions only
  9  CLOSE         status gate, retrospective, single final report to user
 ```
 
@@ -294,8 +294,8 @@ your message only by copying them from orchestration state (`worker-show`), neve
 from memory. Re-dispatch only if the resend is rejected again or the worker is gone.
 When a send may already have been accepted, inspect the Dispatch with `worker-show`
 before asking for anything — never request a second report under a new identity.
-Record the event in `decisions.jsonl`; repeated occurrences are a retrospective
-signal.
+Leave the event in Orca runtime state. Only a repeated/material anomaly becomes an
+exception decision, and only the selected band's durable format receives it.
 
 ### 7. Arbitrate — without doing the work
 
@@ -317,9 +317,9 @@ faster than another dispatch. That is exactly why it is a prohibition and not a
 preference.
 
 For Dev and QC, first run `orchestration.machine_acceptance.validator` against the
-role artifact. Exit `1` rejects the report and triggers a fresh dispatch of the same
+`worker_done` payload or Orca-managed runtime copy. Exit `1` rejects the report and triggers a fresh dispatch of the same
 role with the findings; exit `2` is a coordinator/tooling blocker. Lead must not edit
-an invalid artifact into compliance. A passing validator only opens the report for
+an invalid payload into compliance. A passing validator only opens the report for
 the consistency checks below; it is not a correctness or QC verdict.
 
 Read the return envelope against the contract you issued. The questions, in order:
@@ -379,9 +379,16 @@ third attempt at the same wall.
 
 ### 8. Document
 
-Append to `decisions.jsonl` on every event in `documentation.decision_log
-.required_events`. The YAML asks for a recorded reason in five separate places; this
-is the one file they all land in.
+Follow `documentation.files_by_band` exactly:
+
+- XS: create no feature folder or durable task document.
+- S/M/L/XL: after the feature reaches an outcome, write one concise `summary.md`
+  describing what changed, verification, and remaining limitations or risks.
+
+Never write dispatch envelopes, worker IDs, ACKs, lifecycle state, or ordinary event
+logs into the repository. BA, Dev, and QC reports, decision logs, and traceability also
+remain in runtime unless the user, project, or compliance policy explicitly requires
+an export. The summary reports results, not the orchestration process.
 
 ### 9. Close
 
@@ -394,7 +401,7 @@ and what question would have caught it. That question is the deliverable, becaus
 generalises to unrelated tasks.
 
 Then one final report to the user. Only Lead reports. **Before writing it, read
-`skills/orca-closeout/SKILL.md` § 6 and render the report in exactly that table
+`skills/orca-closeout/SKILL.md` § 7 and render the report in exactly that table
 format** — in every mode and band, including `simple` and XS fixes. A final report
 written as prose paragraphs is a format defect: rewrite it into the template before
 sending.

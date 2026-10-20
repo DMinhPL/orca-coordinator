@@ -50,7 +50,7 @@ additional fields only when the user asks or when a dispatch failure needs conte
   ],
 
   "allowed_context": [
-    ".docs/features/2026-08-25_third-party-signin/ba/requirement.md",
+    "accepted requirement and criteria from Orca runtime",
     "git diff",
     "tests/auth/**"
   ],
@@ -72,7 +72,7 @@ additional fields only when the user asks or when a dispatch failure needs conte
     "an acceptance criterion appears untestable or contradictory"
   ],
 
-  "return_artifacts": ["dev/development.md", "branch feat/third-party-signin-101147"]
+  "return_artifacts": ["worker_done payload", "result facts for Lead's final summary"]
 }
 ```
 
@@ -84,8 +84,8 @@ additional fields only when the user asks or when a dispatch failure needs conte
   purpose. For QC this field is load-bearing: `qc_policy.context_mode: delta_only`
   and the forbidden list are what keep verification independent, and the envelope is
   where that is actually enforced.
-- **`acceptance_criteria`** — IDs, not prose. Prose drifts between copies; an ID
-  points at one authoritative statement in the requirement document.
+- **`acceptance_criteria`** — IDs, not duplicated prose. An ID points at the accepted
+  requirement statement in Orca runtime.
 - **`escalate_to_lead_when`** — pre-authorisation. Workers under-escalate because
   escalating feels like failing; naming the conditions in advance reframes it as
   following the protocol.
@@ -157,11 +157,11 @@ not printed as the user-facing launch receipt:
 
 ## Return
 
-Dev and QC persist the return envelope in their role artifact as exactly one fenced
-`json` block (or as raw JSON when the artifact itself is JSON). The persisted object
-must match the payload sent with `worker_done`. This gives
-`orchestration.machine_acceptance.validator` a deterministic input; a prose summary
-alone is not machine-acceptable. QC also includes its `verdict` from the vocabulary in
+Dev and QC send the return envelope in `worker_done` as exactly one JSON object. Lead
+validates that payload directly, or an Orca-managed runtime copy of it; no repository
+file is required merely to feed the validator. No role artifact is persisted by
+default. XS persists no task document; every other band is condensed by Lead into one
+outcome-first `summary.md`. QC includes its `verdict` from the vocabulary in
 `skills/orca-qc/SKILL.md`.
 
 ```json
@@ -275,8 +275,11 @@ dispatch envelope, not the conversation, not a previous task.
    `optimization.rules.pass_concise_handoff_summaries_and_required_artifacts_instead_of_full_transcripts_when_possible`
    — and for QC, passing the Dev transcript is not merely wasteful, it is a forbidden
    context that destroys the independence the provider split was designed to create.
-5. **Every envelope is a line in `decisions.jsonl`.** The envelope sequence is the
-   audit trail of who was asked to do what, on what basis.
+5. **Envelopes remain runtime state.** Orca is the source of truth for dispatches,
+   identities, ACKs, lifecycle state, and `worker_done`. Never write `dispatch.json`
+   or orchestration event logs into the project repository. Decisions and role
+   reports remain runtime state unless an explicit project/compliance requirement
+   calls for an export.
 6. **No task work before the Role Bootstrap ACK.** A verified worker identity is not
    a ready specialist — see "Role Bootstrap ACK" above.
 7. **Lifecycle IDs are copied, never retyped.** `worker_done` takes its Task ID and

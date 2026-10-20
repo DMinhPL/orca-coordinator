@@ -103,7 +103,7 @@ with each other, that is reported to Lead rather than resolved by file order. Se
 - `scripts/complexity_score.py` — deterministic scorer
 - `scripts/config_view.py` — role/path-specific views of the authoritative YAML
 - `scripts/validate_worker_output.py` — machine acceptance gate for Dev/QC reports
-- `scripts/retro_report.py` — aggregates decision logs into batch retrospective metrics
+- `scripts/retro_report.py` — aggregates runtime exports and compatible legacy decision logs into batch metrics
 - `scripts/lint_config.py` — fails the build when a value is restated outside the YAML
 - `REVIEW.md` — findings on config v12 and what changed in v13
 
@@ -118,8 +118,9 @@ with each other, that is reported to Lead rather than resolved by file order. Se
    independently QC-verified.
 3. **Writing is a granted permission.** Modification tier and file allowlist come
    from the dispatch envelope. Default is M1 — propose, do not apply.
-4. **Everything routes through Lead.** One reporter to the user, one arbiter of
-   conflicts, one decision log — and Lead coordinates rather than performs. A phase
+4. **Everything routes through Lead.** One reporter to the user and one arbiter of
+   conflicts. Process evidence stays in Orca runtime; the only default project
+   document is the final feature outcome. Lead coordinates rather than performs. A phase
    without its specialist's `worker_done` has no conclusion, whoever else looked at it.
 
 No band is small enough to change commitment 4. `complexity_assessment.triage`'s XS

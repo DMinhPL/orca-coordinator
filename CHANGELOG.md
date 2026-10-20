@@ -14,6 +14,45 @@ Legend: `+` added · `~` changed · `-` removed
 
 ---
 
+## v30 — one outcome-first feature document
+
+`schema_version: 8`
+
+- `~ documentation.files_by_band` — XS still creates no document; every other band
+  creates only `summary.md` after the feature reaches an outcome.
+- `-` automatic BA, Dev, QC, decision-log, and traceability files. Their structured
+  evidence remains in Orca runtime and is exported only when explicitly requested or
+  required by project/compliance policy.
+- `~ documentation.summary` — focuses on what changed, observable impact,
+  verification, limitations, and risks; process narrative and worker metadata are
+  excluded.
+- `~ schema_version` `7` -> `8` and `~ config_version` `29` -> `30` because durable
+  artifact consumers must now expect one final summary instead of role documents.
+
+---
+
+## v29 — band-scaled durable documentation
+
+`schema_version: 7`
+
+- `+ orchestration.runtime_artifacts` — Orca remains the source of truth for dispatch
+  envelopes, worker identity, ACKs, lifecycle state, and `worker_done`; repository
+  copies such as `dispatch.json` and orchestration event logs are forbidden.
+- `~ orchestration.machine_acceptance.input` — validates the `worker_done` payload or
+  an Orca-managed runtime copy instead of requiring a persisted role file.
+- `~ documentation.files_by_band` — XS creates no feature folder or durable task
+  document; S creates one maintenance-oriented `summary.md`; M/L/XL retain the full
+  requirement, development, verification, traceability, and decision package.
+- `~ documentation.decision_log` — becomes exception-only from band M. Routine
+  classification, default routing/tier selection, source detection, dispatch, ACK,
+  and completion remain runtime events rather than project documents.
+- `~ scripts/retro_report.py` — accepts explicit Orca runtime JSONL exports, so
+  retrospective metrics no longer force documents to be created for XS/S work.
+- `~ schema_version` `6` -> `7` and `~ config_version` `28` -> `29` because artifact
+  persistence and machine-acceptance inputs changed for consumers.
+
+---
+
 ## v28 — XS self-revalidation and progressive config loading
 
 `schema_version: 6`

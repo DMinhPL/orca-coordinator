@@ -1,13 +1,15 @@
 #!/usr/bin/env python3
-"""Aggregate Orca decisions.jsonl files into a batch retrospective.
+"""Aggregate Orca runtime exports and compatible legacy decision logs.
 
 Usage:
     python scripts/retro_report.py
     python scripts/retro_report.py .docs/features other/task/decisions.jsonl
+    python scripts/retro_report.py --runtime-export orca-runtime.jsonl .docs/features
     python scripts/retro_report.py --json --strict .docs/features
 
-Directories are searched recursively for decisions.jsonl. Malformed records are
-reported and skipped unless --strict is supplied.
+Directories are searched recursively for legacy decisions.jsonl files; runtime
+exports are passed explicitly so the script never writes or copies them into the
+project. Malformed records are reported and skipped unless --strict is supplied.
 """
 
 from __future__ import annotations
@@ -162,13 +164,20 @@ def main() -> int:
         sys.stderr.reconfigure(encoding="utf-8")
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument("inputs", nargs="*", default=[".docs/features"])
+    parser.add_argument(
+        "--runtime-export",
+        action="append",
+        default=[],
+        metavar="PATH",
+        help="Orca JSONL export to include without copying it into project docs",
+    )
     parser.add_argument("--json", action="store_true", dest="as_json")
     parser.add_argument("--strict", action="store_true")
     args = parser.parse_args()
 
-    files = decision_files(args.inputs)
+    files = decision_files([*args.inputs, *args.runtime_export])
     if not files:
-        print("retro-report: no decisions.jsonl files found", file=sys.stderr)
+        print("retro-report: no runtime export or decisions.jsonl files found", file=sys.stderr)
         return 2
     records, errors = load_records(files)
     if args.strict and errors:

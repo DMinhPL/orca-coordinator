@@ -26,8 +26,9 @@ non-negotiable commitments instead:
 3. **Writing is a granted permission.** Modification tier and file allowlist are set
    in the dispatch envelope, not assumed by the worker. Default is M1 — propose, do
    not apply.
-4. **Everything routes through Lead.** One reporter to the user, one arbiter of
-   conflicts, one decision log.
+4. **Everything routes through Lead.** One reporter to the user and one arbiter of
+   conflicts. Runtime events stay in Orca; only material exceptions become durable
+   decisions.
 
 The workflow is a deliberate tailoring of PMBOK 8th/7th, the Agile Practice Guide,
 and PMI's AI standard to small, high-frequency software tasks — see
@@ -89,7 +90,7 @@ the YAML wins and the skill file is the bug —
 | `scripts/config_view.py` | Extracts role/path-specific context from the authoritative YAML without duplicating policy |
 | `scripts/validate_worker_output.py` | Validates the structured Dev/QC report envelope before Lead accepts a phase |
 | `scripts/lint_config.py` | Fails the build when a value is restated outside the YAML, or the changelog drifts from the config |
-| `scripts/retro_report.py` | Aggregates `decisions.jsonl` across tasks — escalation rate, allowlist amendments, requirement-gap change requests, upward re-scores |
+| `scripts/retro_report.py` | Aggregates Orca runtime exports and compatible legacy decision logs into batch metrics |
 | `CHANGELOG.md` | Version history for `agents-models.yaml` |
 | `REVIEW.md` / `REVIEW-workflows.md` | Design review findings behind the v13 and v14 changes |
 | `examples/extra-skills/` | Worked example of a project overlay (see below) |
@@ -156,11 +157,28 @@ See [`references/agents-models.yaml`](references/agents-models.yaml) →
    `references/complexity-model.md`).
 5. Run `python scripts/lint_config.py` whenever `agents-models.yaml` changes, to keep
    procedure files honest about where values actually live.
-6. Run `python scripts/retro_report.py .docs/features` at the configured batch
-   interval to review whether routing and escalation are paying for themselves.
+6. Run `python scripts/retro_report.py --runtime-export <export.jsonl>` at the
+   configured batch interval to review whether routing and escalation are paying for
+   themselves. Positional `decisions.jsonl` inputs remain supported for old runs.
+
+## Documentation economy
+
+Operational state belongs to Orca, not the project repository. Never create
+`dispatch.json`, worker-state files, bootstrap receipts, or orchestration event logs
+under `.docs/features`.
+
+- **XS:** no durable document and no feature folder; validation stays in the accepted
+  `worker_done` payload.
+- **S/M/L/XL:** one concise `summary.md`, written after the feature reaches an
+  outcome, covering what changed, verification, and remaining limitations or risks.
+
+Role reports, traceability, decisions, dispatch, ACK, and worker completion remain
+runtime state. Export a separate artifact only when the user, project policy, or a
+compliance requirement explicitly needs it. The repository document exists to explain
+the feature result, not to archive the process.
 
 ## Status
 
-Config `schema_version: 6`, `config_version: 28` — see [`CHANGELOG.md`](CHANGELOG.md)
+Config `schema_version: 8`, `config_version: 30` — see [`CHANGELOG.md`](CHANGELOG.md)
 for the version history, and [`REVIEW.md`](REVIEW.md) /
 [`REVIEW-workflows.md`](REVIEW-workflows.md) for the design review findings behind it.

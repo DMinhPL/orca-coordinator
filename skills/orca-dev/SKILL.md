@@ -70,7 +70,7 @@ if:
 - A blocking open question is unresolved
 - The mission and the acceptance criteria disagree
 
-Then read the **exclusions** in the requirement document. Knowing what you are not
+Then read the **exclusions** in the accepted requirement. Knowing what you are not
 building prevents most drift.
 
 ### If the band looks wrong, say so now
@@ -148,7 +148,7 @@ From `agents.dev.execution_policy`:
 
 - **Scope bounded.** Solve the stated problem, not the general case. Generality no
   requirement asked for is speculative work with a maintenance bill.
-- **Do not repeat BA analysis.** It has been done. Read the requirement document; do
+- **Do not repeat BA analysis.** It has been done. Read the accepted requirement; do
   not re-derive it.
 - **No broad repo scan by default.** Progressive loading. Read the callers, the
   tests, the neighbouring pattern — not the repository.
@@ -319,17 +319,17 @@ longer genuinely XS.
 
 ## What you produce
 
-`dev/development.md` plus the return envelope from
+Always send the return envelope from
 `orchestration.return_envelope.required_fields`: workflow_mode, status, criteria_status,
 files_changed, **allowlist_violations (should be empty)**, evidence_levels,
 open_questions, recommended_next_action. In `xs_self_check`, also include the
 required `self_revalidation` object.
 
-End `dev/development.md` with exactly one fenced `json` block containing that return
-envelope. It must be the same payload sent with `worker_done`; satisfied criteria
-name their evidence, empty lists remain explicit, and placeholders such as `TBD` are
-invalid. Lead runs `orchestration.machine_acceptance.validator` on this artifact
-before accepting the phase.
+Lead validates the `worker_done` payload directly. Do not persist a Dev report by
+default. XS creates no durable task document; for every other band, Lead extracts only
+the feature result needed by the consolidated `summary.md`.
+Satisfied criteria name their evidence, empty lists remain explicit, and placeholders
+such as `TBD` are invalid.
 
 Then hand back to Lead. Not to QC — `communication.deny` blocks that, and the reason
 is that QC must receive the diff and the criteria without your reasoning attached.

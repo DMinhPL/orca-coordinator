@@ -1,5 +1,5 @@
-schema_version: 6
-config_version: 28
+schema_version: 8
+config_version: 30
 
 # Central provider/model/effort configuration for the four-agent Orca workflow.
 # Per-task user overrides take precedence over these defaults.
@@ -75,7 +75,7 @@ agents:
       - requirement_analysis
       - codebase_analysis
       - architecture_analysis
-      - requirement_document
+      - accepted_requirement_record
       - acceptance_criteria
       - risk_analysis
       - identify_open_questions
@@ -134,7 +134,7 @@ agents:
       - failure_mode_analysis
       - production_observability
       - security_and_runtime_risk_handling
-      - development_document
+      - implementation_result
       - follow_approved_requirement
       - report_blockers_to_lead
       - respect_file_allowlist
@@ -539,7 +539,7 @@ modification_policy:
       release-fix: fix
     category_override:
       allowed_by: lead
-      requires: recorded_reason_in_decision_log
+      requires: recorded_reason_in_runtime_audit
     slug:
       # Same feature slug as the .docs folder, so branch and documentation match.
       source: documentation.folder_naming
@@ -686,7 +686,7 @@ engineering_policy:
     p2: minor defect; edge case or non-primary path
     p3: cosmetic or maintainability finding
     gate_rule: all_p0_must_pass_before_status_implemented
-  # Requirement traceability has a concrete artifact behind it.
+  # Requirement traceability is enforced in runtime; durable export is exceptional.
   traceability:
     id_schemes:
       requirement: 'REQ-##'
@@ -697,8 +697,8 @@ engineering_policy:
       decision_record: 'DR-###'
       test_case: 'TC-##'
     matrix:
-      required_from_band: M
-      path: '{documentation.root}/{folder}/traceability.csv'
+      required_in_runtime_from_band: M
+      durable_export_only_when: explicitly_requested_or_required_by_project_or_compliance
       columns:
         [
           req_id,
@@ -849,7 +849,7 @@ change_control:
     clarification:
       description: ambiguity resolved, scope unmoved
       authority: lead
-      artifact: amend_requirement_document
+      artifact: amend_runtime_requirement
     allowlist_amendment:
       description: a necessary file was not on the list, no new requirement
       authority: lead
@@ -872,13 +872,13 @@ change_control:
     [scope, schedule, cost, resources, risk, quality, rescore]
   dispositions: [approved, rejected, deferred, more_information_needed]
   propagation_checklist:
-    - requirement_document
-    - traceability_matrix
-    - risk_section
+    - runtime_requirement
+    - runtime_traceability
+    - runtime_risk_record
     - file_allowlist
     - definition_of_done
     - budget
-    - decision_log
+    - final_summary_when_the_change_affects_future_maintenance
     - reissue_dispatch_envelope
 
 workflow_modes:
@@ -903,7 +903,7 @@ workflow_modes:
       on_failure_or_uncertainty: return_partial_or_escalated_and_rescore_do_not_self_approve
       on_material_band_challenge: rescore_and_route_to_the_new_mode_before_closeout
     ba_substitution:
-      lead_may_persist_already_confirmed_requirement_into_requirement_document: true
+      lead_may_persist_already_confirmed_requirement_into_band_documentation: true
       lead_may_invent_or_derive_new_business_rules: false
       on_new_business_rule_needed: switch_to_standard_and_dispatch_ba
 
@@ -918,7 +918,7 @@ workflow_modes:
       - user
     ba_substitution:
       # This escape valve keeps Lead from becoming a shadow BA.
-      lead_may_persist_already_confirmed_requirement_into_requirement_document: true
+      lead_may_persist_already_confirmed_requirement_into_band_documentation: true
       lead_may_invent_or_derive_new_business_rules: false
       on_new_business_rule_needed: switch_to_standard_and_dispatch_ba
 
@@ -997,8 +997,8 @@ workflow_modes:
     description: Analysis, investigation, requirement clarification, architecture review, or documentation without code changes.
     modification_tier: M0
     documentation_rule:
-      development_document_must_state_implementation_not_performed: true
-      development_document_status_ceiling: confirmed
+      state_implementation_not_performed_in_the_band_specific_output: true
+      durable_status_ceiling_when_a_document_exists: confirmed
     flow:
       - lead
       - ba
@@ -1009,8 +1009,8 @@ workflow_modes:
     description: Review or verification of existing changes without new implementation.
     modification_tier: M0
     documentation_rule:
-      if_feature_documentation_exists: update_with_qc_evidence
-      if_absent: create_minimal_package_with_traceability
+      if_feature_documentation_exists: update_according_to_band_policy_with_qc_evidence
+      if_absent: create_only_the_band_specific_output
       mark_unverified_items_with_evidence_level: unknown
     flow:
       - lead
@@ -1080,7 +1080,7 @@ knowledge_sources:
     # authoritative for WHAT IS. A memory that disagrees with the code is a stale
     # memory — and that disagreement is itself a finding worth reporting.
     order:
-      - approved_requirement_document
+      - approved_requirement_record
       - current_repository_state
       - gitnexus_when_fresh
       - knowns
@@ -1311,9 +1311,10 @@ orchestration:
       - band_challenge # see complexity_assessment.band_challenge
     status_values: [complete, partial, blocked, escalated]
     artifact_embedding:
-      required_for: [dev, qc]
+      required_in_worker_done_payload_for: [dev, qc]
       format: exactly_one_json_object_in_a_fenced_json_block_or_raw_json
-      source_of_truth: artifact_copy_must_match_worker_done_payload
+      source_of_truth: worker_done_payload
+      durable_role_artifact: never_by_default
     role_required_fields:
       qc: [verdict]
       dev:
@@ -1324,7 +1325,7 @@ orchestration:
     validator: scripts/validate_worker_output.py
     run_by: lead
     run_at: after_worker_done_before_report_acceptance
-    input: role_report_artifact
+    input: worker_done_payload_or_orca_runtime_copy
     exit_codes: { valid: 0, invalid_report: 1, usage_or_read_error: 2 }
     checks:
       - structured_return_envelope_schema
@@ -1338,6 +1339,15 @@ orchestration:
     does_not_prove: [implementation_correctness, requirement_correctness, qc_verdict]
     on_invalid: reject_report_and_redispatch_same_role_with_validator_findings
     on_usage_or_read_error: stop_and_report_coordinator_blocker
+  runtime_artifacts:
+    source_of_truth: orca_runtime
+    includes: [dispatch_envelope, worker_identity, bootstrap_ack, lifecycle_state, worker_done_payload]
+    persist_inside_project_repository: forbidden
+    forbidden_repo_artifacts:
+      - '**/dispatch.json'
+      - '**/worker-state.json'
+      - '**/orchestration-events.jsonl'
+    rationale: runtime_state_already_exists_in_orca_and_must_not_be_duplicated_as_untracked_project_files
   cleanup:
     release_worker_after_verified_worker_done: true
     report_unreleased_terminal_handle: true
@@ -1346,10 +1356,12 @@ orchestration:
 
 documentation:
   enabled: true
-  required_before_final_success: true
+  required_before_final_success_from_band: S
+  create_feature_folder_from_band: S
   root: .docs/features
   folder_pattern: '{YYYY-MM-DD}_{feature-slug}'
   folder_naming:
+    evaluate_only_when_band_requires_durable_documentation: true
     source: feature_semantics
     use_branch_name_as_default: false
     style: lowercase-kebab-case
@@ -1359,39 +1371,52 @@ documentation:
     require_confirmation_when_unambiguous: false
     ask_user_when_ambiguous: true
     keep_name_stable_after_create: true
-  files:
-    - ba/requirement.md
-    - dev/development.md
-    - qc/verification.md # persists QC findings
-    - decisions.jsonl # escalations, gates, model selections, substitutions
-    - traceability.csv # from band M
-  files_by_band: # keeps small tasks cheap
-    XS: [decisions.jsonl]
-    S:
-      [
-        ba/requirement.md,
-        dev/development.md,
-        qc/verification.md,
-        decisions.jsonl,
-      ]
-    M: all
-    L: all
-    XL: all
+  files_by_band:
+    XS: [] # runtime worker_done payload only; do not create .docs/features
+    S: [summary.md]
+    M: [summary.md]
+    L: [summary.md]
+    XL: [summary.md]
+  summary:
+    applies_from_band: S
+    owner: lead
+    create_after: feature_work_is_complete_or_stopped_with_a_user_relevant_result
+    purpose: one outcome_first_record_of_what_the_feature_changed
+    required_sections: [outcome, what_changed, verification, limitations_and_risks]
+    optional_sections: [user_visible_impact, rollback, follow_up, material_decisions_affecting_maintenance]
+    exclude:
+      [dispatch_envelopes, worker_ids, bootstrap_acks, lifecycle_events, role_reports, full_test_logs, process_narrative]
+    content_rule: prefer_observable_results_over_workflow_description
+  supplemental_artifacts:
+    create_automatically: false
+    allowed_only_when: explicitly_requested_or_required_by_project_or_compliance
+    examples: [requirement_specification, development_report, verification_report, decision_log, traceability_matrix]
   language: English
-  # Every recorded-reason obligation in this file needs one place to land.
   decision_log:
-    path: '{root}/{folder}/decisions.jsonl'
+    storage: orca_runtime
+    durable_export_only_when: explicitly_requested_or_required_by_project_or_compliance
+    summary_copy_rule: copy_only_decisions_that_affect_future_maintenance
+    semantics: exception_only_decisions_not_event_log
     required_events:
-      - complexity_score
       - complexity_rescore
-      - workflow_mode_selected
-      - modification_tier_granted
       - allowlist_amended
       - escalation_triggered
-      - model_selection_between_preferred_and_alternative
       - human_gate_raised_and_outcome
       - change_request_disposition
       - substitution_refused
+      - workflow_mode_overridden_from_band_default
+      - modification_tier_overridden_from_band_cap
+    never_record_as_durable_decisions:
+      - runtime_reachable
+      - backend_selected
+      - ordinary_classification
+      - ordinary_complexity_score
+      - default_workflow_mode_selected
+      - default_modification_tier_granted
+      - knowledge_source_availability
+      - dispatch_started
+      - worker_acknowledged
+      - worker_done_received
     line_fields: [ts, task_id, event, actor, from, to, reason]
   status_gate:
     implemented_requires_qc_worker_done_except: [xs_self_check]
@@ -1564,6 +1589,11 @@ cleanup_policy:
 # Retrospective — closes the loop so the rubric improves
 # ─────────────────────────────────────────────────────────────
 retrospective:
+  data_sources:
+    - orca_runtime_export_when_available
+    - final_feature_summaries_when_useful
+    - explicitly_exported_legacy_decision_logs
+  must_not_force_document_creation_for_metrics: true
   per_task:
     required_from_band: M
     fields:

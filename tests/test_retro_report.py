@@ -58,6 +58,29 @@ class RetroReportTests(unittest.TestCase):
         )
         self.assertEqual(2, result.returncode)
 
+    def test_accepts_explicit_runtime_export(self):
+        with tempfile.TemporaryDirectory() as directory:
+            path = Path(directory) / "orca-runtime.jsonl"
+            path.write_text(
+                json.dumps({"task_id": "T2", "event": "complexity_score", "to": "S"}) + "\n",
+                encoding="utf-8",
+            )
+            result = subprocess.run(
+                [
+                    sys.executable,
+                    str(ROOT / "scripts" / "retro_report.py"),
+                    "--json",
+                    "--runtime-export",
+                    str(path),
+                    "missing-docs-directory",
+                ],
+                cwd=ROOT,
+                capture_output=True,
+                text=True,
+                check=True,
+            )
+        self.assertEqual(1, json.loads(result.stdout)["tasks"])
+
 
 if __name__ == "__main__":
     unittest.main()

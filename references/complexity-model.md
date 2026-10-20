@@ -43,9 +43,9 @@ a bypass:
 
 - **Nothing that gates safety is skipped.** Hard overrides run regardless, and the
   three dimensions retained are the three that can force a band upward on their own.
-- **It stays auditable.** Three scores plus the `fast_path_taken` flag go into
-  `decisions.jsonl`, so a retrospective can still ask whether a task was under-scored.
-  A bypass would leave nothing to review.
+- **It stays auditable.** Three scores plus the `fast_path_taken` flag remain in Orca
+  runtime state and its retrospective export. They do not create project documents;
+  only a maintenance-relevant consequence belongs in the final feature summary.
 - **It degrades toward the full rubric, never away from it.** Any doubt on any of the
   three, and you are back on all seven. The fast path only triggers on unanimous zero.
 
@@ -162,7 +162,7 @@ override, so two Leads scoring the same dimensions get the same band.
 python scripts/complexity_score.py --triage --d2 0 --d3 0 --d7 0   # fast-path check
 python scripts/complexity_score.py --d1 2 --d2 2 --d3 3 --d4 2 --d5 2 --d6 1 --d7 2
 python scripts/complexity_score.py --interactive
-python scripts/complexity_score.py --json ...     # for decisions.jsonl
+python scripts/complexity_score.py --json ...     # for Orca runtime/a retrospective export
 ```
 
 Run `--triage` first. It either returns band XS with the fast path taken, or tells you

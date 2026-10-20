@@ -54,9 +54,9 @@ merely admired:
 | Principle | Orca mechanism |
 |---|---|
 | **Adopt a holistic view** | Blast-radius analysis (D3), contract impact statement, `follow_ups` capture of adjacent debt |
-| **Focus on value** | CAS-scaled ceremony; XS items get four sentences of process, not four documents |
+| **Focus on value** | CAS-scaled ceremony; one outcome-first feature summary, no role-by-role document archive |
 | **Embed quality into processes and deliverables** | Independent verification (Echo ≠ Fluke ≠ Breach); acceptance criteria written before code; tests traced to AC IDs |
-| **Be an accountable leader** | Orca is accountable for every phase; accountability never rotates; decision log |
+| **Be an accountable leader** | Orca is accountable for every phase through its runtime audit; the repository records the delivered outcome |
 | **Integrate sustainability within all project areas** | Compute budget guards; de-escalation after clean phases; treating quota as a finite resource |
 | **Build an empowered culture** | Agents are authorised to escalate by protocol, not by permission; `escalate_when` is pre-authorisation |
 
@@ -129,7 +129,7 @@ The phase names in the tables above correspond to roles and workflow modes as fo
 | P3 Plan | Lead + BA | `grant_modification_tier`, allowlist, definition of done |
 | P4 Build | Dev | `implementation` |
 | P5 Verify | QC | `execute_quality_validation`, `risk_based_review` |
-| P6 Integrate | Dev + Lead | `development_document`, gate G6 |
+| P6 Integrate | Dev + Lead | accepted implementation result, gate G6 |
 | P7 Close | Lead | `documentation.status_gate`, `retrospective` |
 | Change control | Lead | `change_control` |
 
@@ -150,5 +150,5 @@ accountable throughout.
 | `traceability` | Requirements traceability matrix |
 | `evidence_policy` | PMI AI standard: hallucination risk and traceable links between inputs and AI-driven results |
 | `budgets` | Reserve analysis, applied to compute rather than money |
-| `decision_log` | Auditability and accountability distribution |
+| `decision_log` | Material-exception auditability inside runtime without creating project documents |
 | `retrospective` | Lessons learned register; continuous monitoring and adaptation |

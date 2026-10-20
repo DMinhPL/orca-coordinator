@@ -2,8 +2,9 @@
 name: orca-closeout
 description: >-
   Closing an Orca task, owned by Lead. Use this before reporting a final result to
-  the user: it checks the documentation status gate, validates traceability,
-  closes risks, runs the per-task retrospective that calibrates the complexity
+  the user: it checks the result gate, validates runtime traceability,
+  closes risks, writes the single outcome-first feature summary when applicable,
+  and runs the per-task retrospective that calibrates the complexity
   rubric, and releases workers. Trigger it when a task is verified and about to be
   reported complete, and when a batch of tasks warrants reviewing whether the
   pod's sizing and escalation rates are healthy.
@@ -28,14 +29,27 @@ implemented:
 - ☐ No open critical review issues
 - ☐ All P0 defects pass
 - ☐ No allowlist violations
-- ☐ Traceability complete, from band M
+- ☐ Runtime traceability complete, from band M
 
 Also `coordinator_continuity.no_final_while_required_dispatch_unsettled`: no final
 report while any required dispatch is unsettled.
 
-## 2. Traceability validation
+## 2. One durable feature outcome
 
-Walk `traceability.csv` against the two obligations:
+- **XS:** do not create `.docs/features` or any durable task document. The accepted
+  runtime payload is sufficient.
+- **S/M/L/XL:** after the feature reaches an outcome, write exactly one `summary.md`
+  with what changed, observable impact, verification, limitations, and risks.
+
+Never create `dispatch.json`, worker-state files, or orchestration event logs inside
+the project repository. Do not create separate BA, Dev, QC, decision, or traceability
+files unless the user, project policy, or compliance requirements explicitly demand
+them. The document is valuable only when it helps someone understand the delivered
+feature; it is not proof that the process ran.
+
+## 3. Traceability validation
+
+From band M, walk the runtime traceability data against the two obligations:
 
 - **Coverage** — every acceptance criterion has a test. A gap here is a P1.
 - **Justification** — every changed file traces to a requirement. An unmatched file
@@ -44,7 +58,7 @@ Walk `traceability.csv` against the two obligations:
 
 Any requirement not delivered becomes an explicit carry-forward task, not a footnote.
 
-## 3. Risk closure
+## 4. Risk closure
 
 Each risk: `did_not_occur` · `occurred_response_worked` · `occurred_response_failed` ·
 `carried_forward` · `superseded`.
@@ -54,7 +68,7 @@ response. A risk that materialised through a path nobody considered is a lesson 
 the BA probe list, and it should end up *in* that list. A risk carried forward to
 nobody is just closed with extra words — give it an owner outside the task.
 
-## 4. Retrospective — the part that compounds
+## 5. Retrospective — the part that compounds
 
 `retrospective.per_task`, required from band M:
 
@@ -77,110 +91,67 @@ is worth the five minutes.
 If a lesson should change a skill file or a YAML condition list, **change it**. A
 lesson recorded and never applied is the commonest form of organisational amnesia.
 
-## 5. Worker cleanup
+## 6. Worker cleanup
 
 `cleanup_policy`. Release each worker after verified done, and record the outcome:
 `RELEASED`, `RETAINED_USER_OWNED`, `RELEASE_NOT_VERIFIED`, `RELEASE_FAILED_ACTIVE`.
 An accepted worker-done result is immutable during cleanup — cleanup never revises a
 verified result. Report any unreleased terminal handle as a blocker.
 
-## 6. Final report
+## 7. Final report
 
-One report, from Lead only, **printed to the user** — this is a spoken summary, not a
-substitute for the persisted files under `.docs/features/...` or `decisions.jsonl`,
-which remain the durable audit trail. **This format is mandatory in every mode and
-band** — `simple`, XS and one-file fixes included. Never replace it with prose
-paragraphs. Print it as rendered markdown (not inside a code fence), in this shape:
+One outcome-first report, from Lead only, **printed to the user**. XS keeps no durable
+copy; every other band stores the same useful content in `summary.md`. Do not include
+workflow, worker, dispatch, ACK, run, or task metadata unless it explains a blocker
+the user must act on. Print rendered markdown in this shape:
 
 ````markdown
-## <outcome icon> <feature slug> — <outcome in ≤8 words, e.g. "fixed, QC-verified, not committed">
+## <feature name> — <outcome>
 
-<one plain sentence: what the user will notice, e.g. "The All statuses and All types
-dropdowns now show the same chevron as All priorities.">
+<one sentence describing the observable result or the value delivered>
 
-| | |
-|---|---|
-| 🧭 Workflow | <mode> · band <band> · <actual flow, e.g. Lead → Dev → Lead for XS> |
-| ⏭️ Skipped | <why a stage was skipped, e.g. "no BA/QC — XS self-check"> |
-| 🆔 Run / Task | `<run_id>` / `<task_id>` |
-| 🌿 Branch | `<branch>` off `<base>` · <workspace> |
-| 💾 Git | <uncommitted / committed `<sha>` / pushed> |
-
-### 🤖 Dispatches
-
-| # | Role | Dispatch | Worker | Checks | Result | Criteria |
-|---|---|---|---|---|---|---|
-| 1 | 🛠️ Dev | `<dispatch_id>` | <model>/<effort> | exact ✅ · ACK ✅ | ✅ accepted | 4/4 |
-| 2 | 🔍 QC | `<dispatch_id>` | <model>/<effort> | exact ✅ · ACK ✅ | ❌ FAIL | 3/4 |
-| 3 | 🔍 QC #2 | `<dispatch_id>` | <model>/<effort> | exact ✅ · ACK ✅ | ✅ PASS | 4/4 |
-
-<one short line per non-green row, keyed by #, e.g. "#2 — AC-03: Lead gave the wrong
-diff baseline; re-dispatched as #3.">
-
-### 📝 Changes
+### What changed
 
 | File | What changed | Scope |
 |---|---|---|
-| `<path>` | <≤10 words, e.g. "chevron icon on status/type triggers"> | ✅ in allowlist |
+| `<path>` | <short description of the meaningful change> | <user-facing / internal> |
 
-### 🛡️ Verification
+### Verification
 
 | Check | Result |
 |---|---|
 | <status_gate check or executed command, e.g. `tsc --noEmit`> | ✅ / ❌ / ⚠️ not run |
 
-### ⚠️ Notes & risks
+### Limitations and risks
 
-- ⚠️ <leftover difference, risk or process note — one line each, owner if any>
+- <only unresolved limitations, risks, or follow-up work>
 
-↩️ **Rollback:** <the recorded rollback mechanism>
+**Rollback:** <include only when useful>
 
-> ### ⏸ Your call
-> 1. **<decision>** — <options, e.g. "commit as `fix(tickets): …` and push? yes / no">
-> 2. **<decision>** — <options>
+**Next action:** <include only when the user must decide or act>
 ````
 
 Rules:
 
-- **Outcome icon** in the heading: ✅ done and verified · ⚠️ done with conditions or
-  unverified parts · ❌ failed or blocked. The outcome text must state the git
-  state when anything is uncommitted.
-- One **Dispatches** row per dispatch **actually made**, in dispatch order. Retries
-  and escalations get their own row (`QC #2`), never overwrite the earlier one. A
-  skipped role (BA in `simple`, BA/QC in `xs_self_check`, QC in `research_only`)
-  gets no row — its absence
-  is the `Skipped` line, not repeated in the table. Role icons: 📋 BA · 🛠️ Dev ·
-  🔍 QC.
-- Column values come from the return envelope and receipts: `Worker` is
-  `<model>/<effort>` (add the provider only when two dispatches differ by provider);
-  `Checks` is exactWorker and Bootstrap ACK (`MISSING` / `INCONSISTENT` / ⚠️ printed
-  in place of ✅); `Result` is QC's verdict (`PASS` / `CONDITIONAL` / `FAIL`) or, for
-  BA/Dev, the `worker_done` outcome; `Criteria` is satisfied / total.
-- Keep every cell short — ids, verdicts, counts, file paths, ≤10-word phrases.
-  Anything that needs a sentence goes in a note under the table or in **Notes &
-  risks**. Terminal tables wrap badly, so never put a paragraph in a cell.
-- Icons: use the section and role icons shown above plus the status set ✅ ❌ ⚠️ ⏸.
-  Do not add others.
-- **Changes** lists Dev's `files_changed`; an allowlist violation shows ❌ with the
-  violated rule. Omit the table for read-only runs (`research_only`, review-only).
+- Lead with the result and what the user or maintainer will notice.
+- **What changed** lists only meaningful delivered changes. Omit the table for
+  read-only work and report the useful finding instead.
 - **Verification** includes anything that was *not* checked (e.g. "viewed in a
   running app — ⚠️ not run"), so a PASS never implies more than was done.
-- **Notes & risks** is omitted when nothing is carried forward and that is verified;
+- **Limitations and risks** is omitted when nothing is carried forward and that is verified;
   do not print an empty section.
-- Pull every field from the return envelope and the receipts already printed during
-  the run (`workflows.md` § 1.3a/1.3b) — never restate from memory or re-derive.
-  A field with no verified value (no `band_challenge` was raised, no risk was
-  carried) is omitted, not invented as `none` unless that is itself verified.
-- **Your call** is mandatory, always last, and holds one to three numbered concrete
-  decisions with their options — never a closing pleasantry. G7's commit/push
-  approval belongs here when the task reached a work branch and nothing has been
-  committed yet. When there is truly nothing to decide, it states the one next action.
-- Keep it to what changed and what is decided — this is the report, not a second
-  retrospective; the `generalizable_probe` and batch-level analysis stay in § 4.
+- Use verified facts from accepted return payloads. Do not expose the orchestration
+  audit trail just because it exists.
+- State git status only when uncommitted work, commit approval, or push approval
+  changes what the user needs to do next.
+- Omit **Next action** when the work is complete and the user has no decision to make.
+- Keep the report short enough that the result is visible before any process detail.
 
 ## Batch retrospective
 
-Every `retrospective.batch.every_n_tasks` (default 15), read across tasks:
+Every `retrospective.batch.every_n_tasks` (default 15), read the Orca runtime export
+when available, then use final feature summaries only where they add outcome context.
+Never create task documents solely to feed retrospective metrics.
 
 - **Which dimension is systematically mis-scored?** Adjust the rubric, not individual
   estimates. It is usually d5, verification difficulty.

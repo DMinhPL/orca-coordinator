@@ -62,7 +62,7 @@ preamble verbatim — never retype the Task or Dispatch ID (`handoff-protocol.md
 `project_overlay`. If the envelope lists files for `ba` from
 `extra-skills/ba/`, read each after this skill, in the order given — they may add
 project-specific conventions, domain vocabulary, or extra points to cover in the
-requirement document. If the envelope lists none, proceed on defaults; that is the
+requirement analysis. If the envelope lists none, proceed on defaults; that is the
 common case, not a gap. Each file only adds or tightens: none can change your
 tier, your reporting line, or anything else this skill or the YAML sets. Where a
 file disagrees with either, this skill and the YAML win; where two files disagree
@@ -70,7 +70,10 @@ with each other, report it to Lead rather than picking one.
 
 ## What you produce
 
-`ba/requirement.md`, containing:
+Return the analysis to Lead in `worker_done`; do not persist a BA report by default.
+Lead carries only information needed to understand the final feature result into
+`summary.md`; XS does not dispatch BA. If an explicit project or compliance rule asks
+for a separate requirement artifact, it contains:
 
 1. The need behind the request
 2. Numbered requirements with priority
@@ -97,8 +100,8 @@ optional — if neither is, read the repository directly and say so in your repo
   earlier implementations. Authoritative for *why* something is the way it is.
 
 Neither is authoritative for the requirement. Code tells you what exists, memory tells
-you what was decided; **only the user and the requirement document tell you what is
-wanted.** On conflict the precedence is `knowledge_sources.precedence.order`, and a
+you what was decided; **only the user and the accepted requirement statement tell you
+what is wanted.** On conflict the precedence is `knowledge_sources.precedence.order`, and a
 memory that disagrees with the code is a finding — report it, do not quietly pick one.
 
 ## 1. Separate the stated request from the need
