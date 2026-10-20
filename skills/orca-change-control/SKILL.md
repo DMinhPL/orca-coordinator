@@ -12,7 +12,9 @@ description: >-
 # Integrated Change Control
 
 Owner: **Lead**. Raisable by BA, Dev, QC, or the user — always via Lead.
-Parameters: `change_control` in `references/agents-models.yaml`.
+Load the exact parameters with
+`python scripts/config_view.py --path change_control --path modification_policy.file_allowlist`.
+The source YAML remains authoritative.
 
 Change is not the problem; *unrecorded* change is. A pod that absorbs changes
 silently produces work that no longer matches its requirement, its tests, or its

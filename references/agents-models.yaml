@@ -1,5 +1,5 @@
-schema_version: 5
-config_version: 27
+schema_version: 6
+config_version: 28
 
 # Central provider/model/effort configuration for the four-agent Orca workflow.
 # Per-task user overrides take precedence over these defaults.
@@ -317,9 +317,9 @@ complexity_assessment:
         band: XS
         recorded_total: fast_path
         dimensions_not_scored: [d1, d4, d5, d6]
-      # The fast path collapses SCORING and MODE ceremony only. It never
-      # authorizes Primary/Lead to implement the change itself — XS still
-      # dispatches a Dev worker under `simple` mode. See
+      # The fast path collapses scoring, BA, and the independent QC dispatch. It
+      # never authorizes Primary/Lead to implement the change itself — XS still
+      # dispatches a Dev worker under `xs_self_check` mode. See
       # orchestration.forbidden_fallbacks: primary_direct_implementation.
     otherwise: score_all_seven_dimensions
     record: [d2, d3, d7, fast_path_taken, hard_override_matched]
@@ -332,8 +332,8 @@ complexity_assessment:
     XS:
       {
         range: [0, 3],
-        workflow_mode: simple,
-        complexity_profile: simple,
+        workflow_mode: xs_self_check,
+        complexity_profile: xs,
         max_modification_tier: M2,
       }
     S:
@@ -659,7 +659,7 @@ engineering_policy:
         - { mode: review_fix, when: defect_and_expected_behavior_already_clear }
         - { mode: defect_triage, when: expected_behavior_or_root_cause_unclear }
         - { mode: standard, when: fix_requires_new_business_rules }
-    mode_downgrade_allowed_when: requirement_is_explicit_and_confirmed_and_band_is_XS_or_S
+    mode_downgrade_allowed_when: requirement_is_explicit_and_confirmed_and_band_is_XS_or_S_with_band_specific_mode
     mode_downgrade_forbidden_when: hard_override_matched
   evidence_levels:
     - confirmed
@@ -734,6 +734,8 @@ budgets:
   on_exhaustion: stop_and_report_to_user_via_lead
   report_fields: [what_was_attempted, what_was_learned, revised_band, options]
   by_profile:
+    xs:
+      { dev_dispatches: 2, qc_dispatches: 0, escalations: 1, ba_dispatches: 0 }
     simple:
       { dev_dispatches: 2, qc_dispatches: 2, escalations: 1, ba_dispatches: 1 }
     normal:
@@ -880,8 +882,33 @@ change_control:
     - reissue_dispatch_envelope
 
 workflow_modes:
+  xs_self_check:
+    description: Trivial, explicit, reversible implementation with zero ambiguity and blast radius, no hard override, one Dev dispatch, and structured Dev self-revalidation instead of an independent QC dispatch.
+    entry_condition: band_is_XS_and_fast_path_taken_and_requirement_is_explicit_and_confirmed_and_no_hard_override_matched
+    flow:
+      - lead
+      - dev
+      - lead
+      - user
+    skipped_roles:
+      ba: requirement_is_already_explicit_and_confirmed
+      qc: risk_is_zero_under_fast_path_and_dev_self_revalidation_is_machine_accepted
+    dev_self_revalidation:
+      required: true
+      timing: after_implementation_before_worker_done
+      must_execute: [targeted_tests_or_equivalent_check, lint_or_static_check_when_available, diff_and_allowlist_check]
+      return_field: self_revalidation
+      required_fields: [commands, checks, result, evidence]
+      accepted_result_for_complete: passed
+      on_failure_or_uncertainty: return_partial_or_escalated_and_rescore_do_not_self_approve
+      on_material_band_challenge: rescore_and_route_to_the_new_mode_before_closeout
+    ba_substitution:
+      lead_may_persist_already_confirmed_requirement_into_requirement_document: true
+      lead_may_invent_or_derive_new_business_rules: false
+      on_new_business_rule_needed: switch_to_standard_and_dispatch_ba
+
   simple:
-    description: Small implementation task. Dev and QC are required; BA analysis may be skipped only when the user's requirement is already explicit and confirmed and no hard override matched.
+    description: Small band-S implementation task. Dev and independent QC are required; BA analysis may be skipped only when the user's requirement is already explicit and confirmed and no hard override matched.
     flow:
       - lead
       - dev
@@ -1171,6 +1198,11 @@ optimization:
     - never_use_high_effort_preemptively_or_as_a_complexity_shortcut
     - one_escalation_level_per_trigger_except_hard_overrides
   complexity_profiles:
+    xs:
+      lead: default
+      ba: skipped
+      dev: default
+      qc: skipped_when_dev_self_revalidation_is_machine_accepted
     simple:
       lead: default
       ba: skipped_when_allowed
@@ -1243,6 +1275,7 @@ orchestration:
       - provider
       - model
       - effort
+      - workflow_mode
       - mission
       - modification_tier
       - file_allowlist
@@ -1264,6 +1297,7 @@ orchestration:
     required_fields:
       - task_id
       - role
+      - workflow_mode
       - status
       - criteria_status
       - files_changed
@@ -1282,6 +1316,8 @@ orchestration:
       source_of_truth: artifact_copy_must_match_worker_done_payload
     role_required_fields:
       qc: [verdict]
+      dev:
+        xs_self_check: [self_revalidation]
   machine_acceptance:
     enabled: true
     roles: [dev, qc]
@@ -1298,6 +1334,7 @@ orchestration:
       - testing_claims_have_nearby_evidence
       - qc_approval_has_complete_status_and_evidence
       - boundary_matrix_has_no_blank_cells_when_present
+      - xs_dev_self_revalidation_has_commands_checks_result_and_evidence
     does_not_prove: [implementation_correctness, requirement_correctness, qc_verdict]
     on_invalid: reject_report_and_redispatch_same_role_with_validator_findings
     on_usage_or_read_error: stop_and_report_coordinator_blocker
@@ -1357,7 +1394,12 @@ documentation:
       - substitution_refused
     line_fields: [ts, task_id, event, actor, from, to, reason]
   status_gate:
-    implemented_requires_qc_worker_done: true
+    implemented_requires_qc_worker_done_except: [xs_self_check]
+    xs_self_check_requires:
+      - dev_worker_done
+      - machine_accepted_self_revalidation
+      - all_acceptance_criteria_satisfied
+      - no_band_challenge_requiring_rescore
     implemented_requires_no_open_critical_review_issues: true
     implemented_requires_all_p0_pass: true
     implemented_requires_no_allowlist_violations: true
@@ -1606,8 +1648,13 @@ lead_authority_boundary:
   inspection_is_a_second_pass: false
   inspection_may_produce_an_independent_pass_fail: false
   no_qc_worker_done_means:
-    - no_qc_conclusion
-    - no_validated_success_claim
+    default:
+      - no_qc_conclusion
+      - no_validated_success_claim
+    xs_self_check:
+      - no_independent_qc_conclusion
+      - success_claim_must_be_labeled_dev_self_revalidated
+      - machine_accepted_self_revalidation_required
 
 # ─────────────────────────────────────────────────────────────
 # Coordinator resume — coordinator_continuity states properties; this states

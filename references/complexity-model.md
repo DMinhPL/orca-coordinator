@@ -90,10 +90,16 @@ unknown
 
 ## Bands → mode and profile
 
-Ranges and mappings live in `complexity_assessment.bands`. In summary: XS and S route
-to `simple` mode and the `simple` profile; M routes to `standard` and `normal`; L
-routes to `standard` and `complex`; XL is not executed — it decomposes into child
-tasks that each re-score.
+Ranges and mappings live in `complexity_assessment.bands`. In summary: XS routes to
+`xs_self_check` and the `xs` profile; S routes to `simple` with independent QC; M
+routes to `standard` and `normal`; L routes to `standard` and `complex`; XL is not
+executed — it decomposes into child tasks that each re-score.
+
+`xs_self_check` is a verification trade-off, not direct implementation by Lead. Dev
+still runs in a fresh supervised worker and must return machine-accepted structured
+self-revalidation. Any uncertainty, failed meaningful check, unexpected blast radius,
+or material band challenge forces a rescore and restores independent QC through the
+new mode.
 
 ## Overrides
 

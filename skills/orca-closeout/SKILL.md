@@ -11,17 +11,20 @@ description: >-
 
 # Closeout
 
-Owner: **Lead**. Parameters: `documentation.status_gate`, `retrospective`,
-`cleanup_policy` in `references/agents-models.yaml`.
+Owner: **Lead**. Load `python scripts/config_view.py --role closeout` for
+`documentation`, `retrospective`, `cleanup_policy`, and dispatch lifecycle values.
 
 Short phase, and the only mechanism the pod has for getting better rather than merely
 faster.
 
 ## 1. Status gate
 
-`documentation.status_gate` — all must hold before status becomes implemented:
+`documentation.status_gate` — all applicable checks must hold before status becomes
+implemented:
 
-- ☐ QC worker done (verified, not timed out — a timeout is a checkpoint)
+- ☐ QC worker done, except in `xs_self_check`
+- ☐ For `xs_self_check`: Dev worker done, machine-accepted self-revalidation passed,
+  every criterion satisfied, and no unresolved band challenge
 - ☐ No open critical review issues
 - ☐ All P0 defects pass
 - ☐ No allowlist violations
@@ -97,8 +100,8 @@ dropdowns now show the same chevron as All priorities.">
 
 | | |
 |---|---|
-| 🧭 Workflow | <mode> · band <band> · <Lead → Dev → QC → Lead, roles actually dispatched> |
-| ⏭️ Skipped | <why a stage was skipped, e.g. "no BA — requirement was explicit"> |
+| 🧭 Workflow | <mode> · band <band> · <actual flow, e.g. Lead → Dev → Lead for XS> |
+| ⏭️ Skipped | <why a stage was skipped, e.g. "no BA/QC — XS self-check"> |
 | 🆔 Run / Task | `<run_id>` / `<task_id>` |
 | 🌿 Branch | `<branch>` off `<base>` · <workspace> |
 | 💾 Git | <uncommitted / committed `<sha>` / pushed> |
@@ -144,7 +147,8 @@ Rules:
   state when anything is uncommitted.
 - One **Dispatches** row per dispatch **actually made**, in dispatch order. Retries
   and escalations get their own row (`QC #2`), never overwrite the earlier one. A
-  skipped role (BA in `simple` mode, QC in `research_only`) gets no row — its absence
+  skipped role (BA in `simple`, BA/QC in `xs_self_check`, QC in `research_only`)
+  gets no row — its absence
   is the `Skipped` line, not repeated in the table. Role icons: 📋 BA · 🛠️ Dev ·
   🔍 QC.
 - Column values come from the return envelope and receipts: `Worker` is

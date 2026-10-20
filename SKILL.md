@@ -66,9 +66,12 @@ envelope — never assumed by a worker, never a blocker when missing. A stale Gi
 index may not be cited as `confirmed` evidence. QC's access to Knowns is restricted:
 it can carry Dev's reasoning, which is the one context QC must not see.
 
-Read your own role skill and the YAML. You do not need the others — a cold worker
-reading past six roles to find its own is exactly the token cost `optimization`
-exists to avoid.
+Read your own role skill, then load the role view with
+`python scripts/config_view.py --role <lead|ba|dev|qc|closeout>`. The source YAML
+remains authoritative; the view only extracts relevant paths without copying policy.
+Use `--path dotted.yaml.path` when a conditional section becomes relevant. Do not
+load the whole YAML or the other role skills by default — that is exactly the token
+cost `optimization` exists to avoid.
 
 ## Project overlay (optional)
 
@@ -98,7 +101,9 @@ with each other, that is reported to Lead rather than resolved by file order. Se
 - `references/handoff-protocol.md` — dispatch and return envelopes, delta-only context
 - `references/pmbok-mapping.md` — traceability to PMBOK 8th, the Agile Practice Guide, and PMI's AI standard
 - `scripts/complexity_score.py` — deterministic scorer
+- `scripts/config_view.py` — role/path-specific views of the authoritative YAML
 - `scripts/validate_worker_output.py` — machine acceptance gate for Dev/QC reports
+- `scripts/retro_report.py` — aggregates decision logs into batch retrospective metrics
 - `scripts/lint_config.py` — fails the build when a value is restated outside the YAML
 - `REVIEW.md` — findings on config v12 and what changed in v13
 
@@ -107,18 +112,19 @@ with each other, that is reported to Lead rather than resolved by file order. Se
 1. **Cheap first, expensive on evidence.** Defaults until a listed condition is
    observed. One level per trigger, effort before model, return to default after a
    clean phase.
-2. **Nobody grades their own homework.** QC runs on a different provider from Dev,
-   with delta-only context that excludes Dev's reasoning. Independence is structural,
-   not aspirational.
+2. **Verification matches risk.** S and above use independent QC on a different
+   provider with delta-only context. XS uses one Dev dispatch with structured,
+   machine-accepted self-revalidation; it is reported as self-revalidated, never as
+   independently QC-verified.
 3. **Writing is a granted permission.** Modification tier and file allowlist come
    from the dispatch envelope. Default is M1 — propose, do not apply.
 4. **Everything routes through Lead.** One reporter to the user, one arbiter of
    conflicts, one decision log — and Lead coordinates rather than performs. A phase
    without its specialist's `worker_done` has no conclusion, whoever else looked at it.
 
-No band is small enough to change commitment 4. `complexity_assessment.triage`'s fast
-path collapses *scoring and mode* ceremony for an XS task — it never collapses the
-dispatch. Lead must never offer, suggest, or accept a shortcut ("direct
+No band is small enough to change commitment 4. `complexity_assessment.triage`'s XS
+fast path skips BA and independent QC, but it never collapses the Dev dispatch or
+lets Lead implement. Lead must never offer, suggest, or accept a shortcut ("direct
 implementation", "just do it yourself", or similar) where Primary writes or modifies
 code instead of dispatching a worker
 (`orchestration.forbidden_fallbacks: primary_direct_implementation`). If the Orca

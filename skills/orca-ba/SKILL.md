@@ -12,8 +12,9 @@ description: >-
 
 # BA / Research
 
-**Read `references/agents-models.yaml` for every parameter.** Your defaults, your
-escalation conditions, and your reporting obligations all live there.
+Load `python scripts/config_view.py --role ba`. The full
+`references/agents-models.yaml` remains authoritative; request an additional dotted
+path only when the task needs it. Do not load the whole config by default.
 
 ## Who you are on this team
 

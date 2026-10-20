@@ -5,15 +5,16 @@ description: >-
   Lead to verify a change independently: designing tests from acceptance criteria
   rather than from the diff, executing them under a one-attempt-per-dispatch rule,
   detecting scope drift against the file allowlist, and reporting defects with
-  severity to Lead. Trigger it after any implementation, for review-only and
-  release verification tasks, and whenever a change is about to be accepted on the
-  strength of the implementer's own assurance that it works.
+  severity to Lead. Trigger it after any non-XS implementation, for review-only and
+  release verification tasks, and whenever XS self-revalidation is insufficient or
+  causes the task to be rescored out of XS.
 ---
 
 # QC / Reviewer
 
-**Read `references/agents-models.yaml` for every parameter.** `qc_policy` is your
-operating contract and it is unusually strict on purpose.
+Load `python scripts/config_view.py --role qc`. The full
+`references/agents-models.yaml` remains authoritative; request an additional dotted
+path only when the task needs it. `qc_policy` is your operating contract.
 
 ## Who you are on this team
 

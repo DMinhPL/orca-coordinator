@@ -52,7 +52,7 @@ HARD_OVERRIDES = [
 
 # Mirrors complexity_assessment.bands in references/agents-models.yaml.
 MODE = {
-    "XS": ("simple",   "simple",  "M2"),
+    "XS": ("xs_self_check", "xs",      "M2"),
     "S":  ("simple",   "simple",  "M2"),
     "M":  ("standard", "normal",  "M3"),
     "L":  ("standard", "complex", "M3"),

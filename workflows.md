@@ -29,8 +29,8 @@ Non-negotiable regardless of which mode is selected.
 - **This includes the moment before dispatch, not only a failed one.** Lead's
   classification questions to the user must never present a "direct
   implementation" / "skip the pod" option — not even as one choice among several,
-  not even for an XS task. `complexity_assessment.triage`'s fast path shortens
-  *scoring*; it does not create a dispatch-free path. If the orchestration runtime
+  not even for an XS task. `complexity_assessment.triage`'s fast path skips BA and
+  independent QC; it does not create a Dev-dispatch-free path. If the orchestration runtime
   itself is unreachable (`orchestration.cli_resolution.runtime_check` fails), that
   is the same class of blocker as a failed worker creation: stop and report it,
   do not quietly do the work yourself.
@@ -150,8 +150,16 @@ worker_done -> validate report artifact -> accept and arbitrate | reject and red
   coordinator/tooling blocker, not a specialist defect; resolve the artifact path or
   report the blocker.
 
-This gate validates structure and evidence claims only. It never proves correctness,
-never replaces QC, and never authorizes Lead to perform specialist work.
+For a Dev report in `xs_self_check`, machine acceptance additionally requires a
+structured `self_revalidation` block: executed commands with integer exit codes,
+named checks, a `passed` result for a complete report, and non-empty evidence. This
+raises the reporting floor but must still be described as self-revalidation, not an
+independent QC verdict.
+
+This gate validates structure and evidence claims only. It never proves correctness
+or authorizes Lead to perform specialist work. Outside `xs_self_check` it never
+replaces QC; inside that mode it supports only the explicitly lower-assurance
+“Dev self-revalidated” claim.
 
 ## 1.4 Mandatory coordinator wait loop
 
@@ -193,7 +201,9 @@ Lead *may* inspect returned evidence for internal consistency, and may request a
 re-dispatch when a report is incomplete. That inspection is not a second pass and
 must not produce an independent Pass/Fail conclusion.
 
-**No QC `worker_done` ⇒ no QC conclusion ⇒ no validated-success claim.**
+Outside `xs_self_check`: **No QC `worker_done` ⇒ no QC conclusion ⇒ no
+validated-success claim.** In `xs_self_check`, the narrower allowed claim is “Dev
+self-revalidated”; Lead may not relabel it QC-verified or independently verified.
 
 This gate erodes faster than any other, because doing it yourself is always faster in
 the moment. That is why it is written as a prohibition rather than a preference.
@@ -360,18 +370,30 @@ follows is *when to pick each* and *which gates that mode emphasises*.
 Feature work, non-trivial bugs, refactoring, architecture changes, or anything
 needing analysis before coding.
 
-Mandatory: BA `worker_done` before Dev starts · Dev `worker_done` before QC starts ·
-QC `worker_done` before any validated-success claim · documentation current.
+Mandatory in `standard`: BA `worker_done` before Dev starts · Dev `worker_done`
+before QC starts · QC `worker_done` before any independently validated-success claim
+· documentation current. Other modes follow their declared flow and status gate.
+
+## xs_self_check
+
+Only for band XS reached through the clean fast path: d2/d3/d7 are all zero, the
+requirement is explicit and confirmed, and no hard override matched. Lead dispatches
+one Dev worker; BA and QC are skipped.
+
+Dev implements, then runs targeted executable validation, available lint/static
+checks, and a diff/allowlist/criteria check. The return envelope carries structured
+`self_revalidation`. Any failed or unavailable meaningful check, uncertainty,
+unexpected blast radius, or material band challenge ends this mode: Dev returns
+`partial` or `escalated`, Lead rescores, and the resulting mode supplies independent
+QC. A completed XS task is reported as **Dev self-revalidated**, never QC-verified.
 
 ## simple
 
 Only when the requirement is already explicit and confirmed, **no hard override
-matched**, and the band is XS or S. The middle condition matters most: a two-line
+matched**, and the band is S. The middle condition matters most: a two-line
 change to a protected path is not a simple task whatever its size.
 
-Reaching XS is itself progressive — `complexity_assessment.triage` matches hard
-overrides first, then scores only d2/d3/d7, and skips the remaining four dimensions
-when those three are clean. Sizing a trivial change must not cost more than the change.
+Reaching XS instead selects `xs_self_check`; it does not enter `simple`.
 
 Lead may persist the user's already-confirmed requirement into the requirement
 document. Lead may **not** invent or derive new business rules in place of BA
@@ -474,12 +496,14 @@ Values live in `agents-models.yaml`. The *behavioral* rules, which do not:
   large — escalate the role that has met a listed condition.
 - Escalate effort before model; one level per trigger; return to default for later
   phases unless the condition still holds.
-- Prefer `simple` for small explicit changes so BA is not started unnecessarily —
-  subject to the hard-override guard in Part 2.
+- Prefer `xs_self_check` for clean fast-path work and `simple` for band-S explicit
+  changes, subject to the hard-override guard in Part 2.
 - Give each worker the approved requirement, the immediately relevant prior-phase
   summary, required paths and evidence, and open questions. Do not forward full prior
   transcripts.
-- Keep every gate above unchanged. Token optimization trades ceremony, never gates.
+- Keep every gate required by the selected mode unchanged. Token optimization may
+  select the explicit XS self-revalidation gate; it may not silently omit a gate.
 
-Read the exact defaults and escalation staging from `agents-models.yaml`. They are
+Read the exact defaults and escalation staging through `scripts/config_view.py`.
+`agents-models.yaml` remains authoritative. The values are
 deliberately not repeated here, and the lint will fail if they creep back in.

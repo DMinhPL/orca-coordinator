@@ -59,7 +59,13 @@ class Lint:
         for p in sorted(self.root.rglob("*.md")):
             if ".git" in p.parts:
                 continue
-            yield p, p.relative_to(self.root).as_posix()
+            rel = p.relative_to(self.root)
+            # sample-patterns is a nested, standalone reference package with its
+            # own model/config vocabulary; linting it against this package's YAML
+            # creates false cross-package drift findings.
+            if rel.parts and rel.parts[0] == "sample-patterns":
+                continue
+            yield p, rel.as_posix()
 
     # C1 — model identifiers
     def c1(self):

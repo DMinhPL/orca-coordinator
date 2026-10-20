@@ -14,6 +14,30 @@ Legend: `+` added · `~` changed · `-` removed
 
 ---
 
+## v28 — XS self-revalidation and progressive config loading
+
+`schema_version: 6`
+
+- `+ workflow_modes.xs_self_check` and `+ complexity_profiles.xs` — clean fast-path
+  XS work dispatches Dev only. Dev must return structured, machine-accepted
+  self-revalidation; any uncertainty, failed check, or material band challenge causes
+  a rescore and restores independent QC through the resulting mode.
+- `~ simple` — now applies to band S and retains Dev plus independent QC.
+- `~ orchestration.return_envelope` — adds `workflow_mode` and conditionally requires
+  `self_revalidation` for XS Dev reports. The validator checks executed commands,
+  exit codes, checks, result, and evidence.
+- `+ scripts/config_view.py` — extracts role-specific or dotted-path views from the
+  authoritative YAML so workers no longer load the full 70 KB config by default.
+- `+ scripts/retro_report.py` — aggregates decision logs into escalation rate,
+  allowlist amendments, requirement-gap change requests, upward rescores, band
+  distribution, change-request origin, and QC-independence signals.
+- `+ examples/extra-skills/dev/` — shipped project-overlay examples for money and
+  ledger constraints, replacing the previously dangling README reference.
+- `~ schema_version` `5` -> `6` and `~ config_version` `27` -> `28` because report
+  consumers must handle `workflow_mode` and conditional XS self-revalidation.
+
+---
+
 ## v27 — machine acceptance for Dev/QC reports
 
 `schema_version: 5`

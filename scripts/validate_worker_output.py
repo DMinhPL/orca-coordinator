@@ -25,6 +25,7 @@ from typing import Any
 COMMON_FIELDS: dict[str, type] = {
     "task_id": str,
     "role": str,
+    "workflow_mode": str,
     "status": str,
     "criteria_status": dict,
     "files_changed": list,
@@ -57,6 +58,7 @@ TEST_CLAIM = re.compile(
     re.IGNORECASE,
 )
 PLACEHOLDER = re.compile(r"^(?:\.\.\.|tbd|todo|fill me|placeholder)$", re.IGNORECASE)
+SELF_REVALIDATION_RESULTS = {"passed", "failed", "blocked"}
 
 
 def read_artifact(path: str) -> str:
@@ -172,6 +174,62 @@ def criterion_problems(criteria: dict[str, Any]) -> list[str]:
     return problems
 
 
+def self_revalidation_problems(value: Any, status: str) -> list[str]:
+    if not isinstance(value, dict):
+        return ["xs_self_check Dev report requires object field: self_revalidation"]
+
+    problems: list[str] = []
+    for field, expected_type in {
+        "commands": list,
+        "checks": list,
+        "result": str,
+        "evidence": list,
+    }.items():
+        if field not in value:
+            problems.append(f"self_revalidation missing required field: {field}")
+        elif not isinstance(value[field], expected_type):
+            problems.append(
+                f"self_revalidation.{field} must be {expected_type.__name__}"
+            )
+    if problems:
+        return problems
+
+    result = value["result"].strip().lower()
+    if result not in SELF_REVALIDATION_RESULTS:
+        problems.append(
+            f"self_revalidation.result {result!r} is not one of "
+            f"{sorted(SELF_REVALIDATION_RESULTS)}"
+        )
+    if status == "complete" and result != "passed":
+        problems.append("complete xs_self_check report requires self_revalidation.result passed")
+
+    if not value["commands"]:
+        problems.append("self_revalidation.commands must contain an executed command")
+    for index, command in enumerate(value["commands"]):
+        if not isinstance(command, dict):
+            problems.append(f"self_revalidation.commands[{index}] must be an object")
+            continue
+        if not isinstance(command.get("command"), str) or not command["command"].strip():
+            problems.append(
+                f"self_revalidation.commands[{index}].command must be non-empty"
+            )
+        if not isinstance(command.get("exit_code"), int):
+            problems.append(
+                f"self_revalidation.commands[{index}].exit_code must be an integer"
+            )
+        elif status == "complete" and command["exit_code"] != 0:
+            problems.append(
+                f"complete xs_self_check report has failing command at index {index}"
+            )
+
+    for field in ("checks", "evidence"):
+        if not value[field]:
+            problems.append(f"self_revalidation.{field} must not be empty")
+        elif any(not isinstance(item, str) or not item.strip() for item in value[field]):
+            problems.append(f"self_revalidation.{field} must contain non-empty strings")
+    return problems
+
+
 def validate(text: str, expected_role: str) -> list[str]:
     problems: list[str] = []
     try:
@@ -192,6 +250,7 @@ def validate(text: str, expected_role: str) -> list[str]:
         return problems
 
     role = envelope["role"].strip().lower()
+    workflow_mode = envelope["workflow_mode"].strip().lower()
     status = envelope["status"].strip().lower()
     if role != expected_role:
         problems.append(f"role is {role!r}; expected {expected_role!r}")
@@ -206,6 +265,11 @@ def validate(text: str, expected_role: str) -> list[str]:
     problems.extend(find_placeholders(envelope))
     problems.extend(check_claim_evidence(text))
     problems.extend(check_boundary_matrix(text))
+
+    if expected_role == "dev" and workflow_mode == "xs_self_check":
+        problems.extend(
+            self_revalidation_problems(envelope.get("self_revalidation"), status)
+        )
 
     if status == "complete":
         if envelope["allowlist_violations"]:

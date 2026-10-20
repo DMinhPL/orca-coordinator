@@ -1,8 +1,9 @@
 # orca-cadence
 
-A Claude Code skill that runs a four-agent engineering pod — **Lead, BA, Dev, QC** —
-in hub-and-spoke coordination. Every task enters through Lead; specialists never talk
-to each other, and no specialist grades its own work.
+A Claude Code skill that runs a risk-scaled engineering pod with four available
+roles — **Lead, BA, Dev, QC** — in hub-and-spoke coordination. Every task enters
+through Lead; specialists never talk to each other. XS tasks use Dev
+self-revalidation; S and above retain independent QC.
 
 ```
         user ⇄ LEAD ⇄ BA
@@ -19,8 +20,9 @@ non-negotiable commitments instead:
 1. **Cheap first, expensive on evidence.** Default model/effort until a defined
    condition is observed; one escalation step per trigger; de-escalate after a clean
    phase.
-2. **Nobody grades their own homework.** QC runs on a different provider from Dev,
-   with delta-only context that excludes Dev's implementation reasoning.
+2. **Verification matches risk.** S and above use independent QC on a different
+   provider with delta-only context. XS uses structured, machine-accepted Dev
+   self-revalidation and is labeled accordingly.
 3. **Writing is a granted permission.** Modification tier and file allowlist are set
    in the dispatch envelope, not assumed by the worker. Default is M1 — propose, do
    not apply.
@@ -34,14 +36,16 @@ and PMI's AI standard to small, high-frequency software tasks — see
 ## How it works
 
 1. **Every task enters through `SKILL.md`**, which routes by role to the matching
-   skill file and reads `references/agents-models.yaml` for parameters.
+   skill file. `references/agents-models.yaml` remains authoritative, while
+   `scripts/config_view.py` extracts only the paths a role needs.
 2. **Lead** scores task complexity into a band (XS–XL) using a progressive rubric —
    hard overrides first, then three safety dimensions, then the remaining four only
    if needed (see [`references/complexity-model.md`](references/complexity-model.md))
    — picks a workflow mode, and dispatches specialists as fresh, cold-boot supervised
    workers.
-3. **BA, Dev, QC** each read only their own role skill plus the YAML — never the
-   whole lifecycle — do their phase, and return a `worker_done` report to Lead.
+3. **BA, Dev, QC** each read only their own role skill plus a generated role config
+   view — never the whole lifecycle or the full YAML — do their phase, and return a
+   `worker_done` report to Lead.
 4. **Lead** waits for each dispatch to reach a terminal state, checks reports for
    internal consistency (never redoing the specialist's work), and advances or loops
    back per [`workflows.md`](workflows.md).
@@ -82,6 +86,7 @@ the YAML wins and the skill file is the bug —
 | `references/handoff-protocol.md` | Dispatch/return envelopes and delta-only context |
 | `references/pmbok-mapping.md` | Traceability to PMBOK 8th, the Agile Practice Guide, and PMI's AI standard |
 | `scripts/complexity_score.py` | Deterministic complexity scorer |
+| `scripts/config_view.py` | Extracts role/path-specific context from the authoritative YAML without duplicating policy |
 | `scripts/validate_worker_output.py` | Validates the structured Dev/QC report envelope before Lead accepts a phase |
 | `scripts/lint_config.py` | Fails the build when a value is restated outside the YAML, or the changelog drifts from the config |
 | `scripts/retro_report.py` | Aggregates `decisions.jsonl` across tasks — escalation rate, allowlist amendments, requirement-gap change requests, upward re-scores |
@@ -91,11 +96,12 @@ the YAML wins and the skill file is the bug —
 
 ## Workflow modes
 
-Six modes cover the shape of the work — see [`workflows.md`](workflows.md) for full
+Eight modes cover the shape of the work — see [`workflows.md`](workflows.md) for full
 detail on when each applies and which gates it emphasises:
 
 - **standard** — the default: analysis, build, verify
-- **simple** — explicit, confirmed, XS/S work with no hard override
+- **xs_self_check** — explicit, confirmed XS work; one Dev dispatch with machine-accepted self-revalidation, no BA/QC dispatch
+- **simple** — explicit, confirmed S work with Dev then independent QC
 - **review_fix** — defect and expected behavior already clear; QC leads, then Dev fixes, then QC re-verifies
 - **defect_triage** — root cause not yet established; QC characterizes first
 - **research_only** — analysis or documentation, no code changes (tier M0)
@@ -143,14 +149,18 @@ See [`references/agents-models.yaml`](references/agents-models.yaml) →
 1. Read [`SKILL.md`](SKILL.md) to understand the router and the four commitments.
 2. Set `protected_paths` in `references/agents-models.yaml` for your own repository —
    the shipped defaults are generic placeholders.
-3. Run a handful of tasks with Lead scoring complexity in shadow mode before letting
+3. Use `python scripts/config_view.py --role <role>` when loading role parameters;
+   add `--path dotted.path` only for conditional policy.
+4. Run a handful of tasks with Lead scoring complexity in shadow mode before letting
    the score drive `workflow_mode` selection automatically (see
    `references/complexity-model.md`).
-4. Run `python scripts/lint_config.py` whenever `agents-models.yaml` changes, to keep
+5. Run `python scripts/lint_config.py` whenever `agents-models.yaml` changes, to keep
    procedure files honest about where values actually live.
+6. Run `python scripts/retro_report.py .docs/features` at the configured batch
+   interval to review whether routing and escalation are paying for themselves.
 
 ## Status
 
-Config `schema_version: 5`, `config_version: 27` — see [`CHANGELOG.md`](CHANGELOG.md)
+Config `schema_version: 6`, `config_version: 28` — see [`CHANGELOG.md`](CHANGELOG.md)
 for the version history, and [`REVIEW.md`](REVIEW.md) /
 [`REVIEW-workflows.md`](REVIEW-workflows.md) for the design review findings behind it.

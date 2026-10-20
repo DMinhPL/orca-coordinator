@@ -29,6 +29,7 @@ additional fields only when the user asks or when a dispatch failure needs conte
   "provider": "codex",
   "model": "gpt-5.6-luna",
   "effort": "medium",
+  "workflow_mode": "standard",
 
   "mission": "Implement third-party sign-in per the approved requirement. Do not modify the session model.",
 
@@ -167,6 +168,7 @@ alone is not machine-acceptable. QC also includes its `verdict` from the vocabul
 {
   "task_id": "TASK-0142",
   "role": "dev",
+  "workflow_mode": "standard",
   "status": "partial",
   "criteria_status": {
     "AC-01": "satisfied — tests/auth/google.spec.ts:12",
@@ -194,6 +196,29 @@ alone is not machine-acceptable. QC also includes its `verdict` from the vocabul
 }
 ```
 
+For `workflow_mode: xs_self_check`, a complete Dev return additionally includes:
+
+```json
+{
+  "self_revalidation": {
+    "commands": [
+      {"command": "npm test -- todo.test.js", "exit_code": 0},
+      {"command": "npm run lint -- src/todo.js", "exit_code": 0}
+    ],
+    "checks": [
+      "final diff contains only allowlisted files",
+      "all acceptance criteria have named evidence"
+    ],
+    "result": "passed",
+    "evidence": ["test/todo.test.js:12", "src/todo.js:18"]
+  }
+}
+```
+
+This is intentionally labeled self-revalidation. A failed command, empty evidence,
+uncertainty, or material band challenge requires `partial`/`escalated` and a Lead
+rescore; it cannot be reported as independently QC-verified.
+
 `band_challenge` is optional and belongs only in a report that actually has one. Raise
 it on the **first read**, before substantive work — the other `rescore_triggers` all
 require the mis-scoring to have already cost something, and this one exists so it does
@@ -206,8 +231,8 @@ and waits rather than writing past a gate that never ran.
 
 A `partial` with honest `criteria_status` is worth far more than a `complete` that
 quietly redefined a criterion. The reinterpreted-criterion failure is the one
-independent verification exists to catch, and declaring it yourself is cheaper for
-everyone than making QC find it.
+independent verification exists to catch in normal modes. In `xs_self_check`, the
+structured Dev revalidation must surface it before closeout.
 
 `evidence_levels` are required where
 `engineering_policy.evidence_policy.tag_required_on` says so. An unconfirmed claim
